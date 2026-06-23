@@ -70,7 +70,7 @@ export default function LandingView({ onAsk }: Props) {
         {FEATURES.map(f => (
           <div
             key={f.title}
-            className="bg-white border border-warm-border rounded-xl p-4 flex gap-3 items-start hover:border-burgundy/30 hover:shadow-sm transition-all cursor-default"
+            className="bg-white border border-warm-border rounded-xl p-4 flex gap-3 items-start hover:border-burgundy/40 hover:shadow-md transition-all cursor-default"
           >
             <span className="text-xl shrink-0">{f.icon}</span>
             <div>

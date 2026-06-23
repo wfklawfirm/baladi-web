@@ -14,14 +14,14 @@ const config: Config = {
           light:   '#A8122C',
         },
         navy: {
-          DEFAULT: '#0B1A2A',
-          light:   '#1A2E45',
+          DEFAULT: '#1B2F4E',
+          light:   '#2A4A6D',
         },
         warm: {
-          bg:     '#F2F1ED',
-          card:   '#FFFFFF',
-          border: '#E5E2D9',
-          muted:  '#6B6863',
+          bg:      '#F7F9FC',   // sidebar, inputs, hover — subtle blue-gray
+          card:    '#FFFFFF',
+          border:  '#E2E8F0',   // clean neutral gray
+          muted:   '#6B7280',   // slate-500
         },
       },
       fontFamily: {

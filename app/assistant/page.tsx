@@ -244,7 +244,7 @@ export default function AssistantPage() {
   const handleExampleAsk = useCallback((q: string) => { setPrefill(q) }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-warm-bg">
+    <div className="flex h-screen overflow-hidden bg-white">
       <Sidebar
         open={sidebarOpen}
         conversations={conversations}
@@ -256,7 +256,7 @@ export default function AssistantPage() {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-300">
-        <header className="flex items-center gap-2 px-4 py-3 border-b border-warm-border bg-warm-bg/80 backdrop-blur-sm">
+        <header className="flex items-center gap-2 px-4 py-3 border-b border-warm-border bg-white/90 backdrop-blur-sm">
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}

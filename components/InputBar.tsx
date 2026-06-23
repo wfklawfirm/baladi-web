@@ -105,7 +105,7 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
   const canSend = (query.trim() || attachedFile) && !loading && !recording
 
   return (
-    <div className="bg-warm-bg border-t border-warm-border px-4 py-3">
+    <div className="bg-white border-t border-warm-border px-4 py-3">
       <div className="max-w-3xl mx-auto">
 
         {/* Attached file chip */}
@@ -125,7 +125,7 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
           </div>
         )}
 
-        <div className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-3 py-3 shadow-sm focus-within:border-burgundy/50 transition-colors">
+        <div className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-3 py-3 shadow-sm focus-within:border-burgundy/60 focus-within:ring-1 focus-within:ring-burgundy/20 transition-all">
 
           {/* Domain selector — hidden on mobile to save space */}
           <select

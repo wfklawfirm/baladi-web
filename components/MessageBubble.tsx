@@ -286,7 +286,7 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
         {sourcesOpen && message.sources && message.sources.length > 0 && (
           <div className="mt-2 space-y-2 animate-fade-in">
             {message.sources.map((s, i) => (
-              <div key={s.chunk_id} className="bg-warm-bg border border-warm-border rounded-xl px-4 py-3">
+              <div key={s.chunk_id} className="bg-white border border-warm-border rounded-xl px-4 py-3 shadow-sm">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-burgundy">[{i + 1}]</span>

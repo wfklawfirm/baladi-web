@@ -6,9 +6,9 @@
 
 :root {
   --burgundy: #8A0F24;
-  --navy:     #0B1A2A;
-  --warm-bg:  #F2F1ED;
-  --border:   #E5E2D9;
+  --navy:     #1B2F4E;
+  --warm-bg:  #F7F9FC;
+  --border:   #E2E8F0;
 }
 
 html {
@@ -17,14 +17,14 @@ html {
 }
 
 body {
-  background-color: var(--warm-bg);
+  background-color: #FFFFFF;
   color: #1C1917;
 }
 
 /* Smooth scrollbar */
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D1CEC7; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
 
 /* Markdown prose */
 .prose-ar h2 {

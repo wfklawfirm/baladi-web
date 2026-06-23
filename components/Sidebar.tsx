@@ -40,7 +40,7 @@ export default function Sidebar({
 
       <aside
         className={clsx(
-          'flex flex-col bg-white transition-all duration-300',
+          'flex flex-col bg-warm-bg transition-all duration-300',
           // Mobile: fixed overlay drawer from the right
           'fixed inset-y-0 right-0 z-50',
           // Desktop: back to normal flex-item in the row
@@ -81,7 +81,7 @@ export default function Sidebar({
         <div className="p-3">
           <button
             onClick={onNewChat}
-            className="w-full flex items-center justify-center gap-2 bg-burgundy hover:bg-burgundy-dark text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-burgundy hover:bg-burgundy-dark text-white text-sm font-medium py-2.5 rounded-lg transition-colors shadow-sm"
           >
             <Plus size={15} />
             محادثة جديدة
