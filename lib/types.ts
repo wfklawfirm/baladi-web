@@ -1,0 +1,51 @@
+export interface Source {
+  chunk_id: string
+  title: string
+  text_preview: string
+  domain: string
+  domain_name: string
+  score: number
+}
+
+export interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  sources?: Source[]
+  confidence?: 'high' | 'medium' | 'low'
+  duration_ms?: number
+  chunks_used?: number
+  timestamp: Date
+  error?: boolean
+}
+
+export interface Conversation {
+  id: string
+  title: string
+  messages: Message[]
+  createdAt: Date
+}
+
+export type Domain =
+  | 'auto'
+  | 'D01' | 'D02' | 'D03' | 'D05'
+  | 'D07' | 'D09' | 'D10' | 'D12' | 'D13'
+
+export const DOMAIN_OPTIONS: { value: Domain; label: string }[] = [
+  { value: 'auto',  label: 'كل المجالات' },
+  { value: 'D01',   label: 'القوانين' },
+  { value: 'D07',   label: 'الحوكمة' },
+  { value: 'D02',   label: 'المالية' },
+  { value: 'D03',   label: 'الإجراءات' },
+  { value: 'D05',   label: 'خدمات المواطن' },
+  { value: 'D09',   label: 'التلزيم' },
+  { value: 'D10',   label: 'الأملاك' },
+  { value: 'D12',   label: 'التراخيص' },
+  { value: 'D13',   label: 'الرقابة' },
+]
+
+export const CONFIDENCE_CONFIG = {
+  high:   { label: 'ثقة عالية',   color: 'text-emerald-600', dot: 'bg-emerald-500' },
+  medium: { label: 'ثقة متوسطة', color: 'text-amber-600',   dot: 'bg-amber-500'   },
+  low:    { label: 'ثقة منخفضة', color: 'text-red-500',     dot: 'bg-red-400'     },
+}
