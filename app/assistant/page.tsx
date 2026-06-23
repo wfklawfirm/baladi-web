@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar'
 import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
 import InputBar from '@/components/InputBar'
-import { ask, analyzeDocument } from '@/lib/api'
+import { askStream, analyzeDocument } from '@/lib/api'
 import type { Message, Conversation, Domain } from '@/lib/types'
 
 function uid(): string {
@@ -44,6 +44,7 @@ export default function AssistantPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeId, setActiveId]           = useState<string | null>(null)
   const [loading, setLoading]             = useState(false)
+  const [streaming, setStreaming]         = useState(false)
   const [prefill, setPrefill]             = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -54,19 +55,13 @@ export default function AssistantPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, streaming])
 
   useEffect(() => {
     if (conversations.length > 0) saveConversations(conversations)
   }, [conversations])
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function addMessage(convId: string, msg: Message) {
-    setConversations(prev =>
-      prev.map(c => c.id === convId ? { ...c, messages: [...c.messages, msg] } : c)
-    )
-  }
-
+  // ── Conversation helpers ───────────────────────────────────────────────────
   const newChat    = useCallback(() => { setActiveId(null); setPrefill('') }, [])
   const selectChat = useCallback((id: string) => { setActiveId(id); setPrefill('') }, [])
   const deleteChat = useCallback((id: string) => {
@@ -74,9 +69,25 @@ export default function AssistantPage() {
     if (activeId === id) setActiveId(null)
   }, [activeId])
 
-  // ── Send handler — routes to analyzeDocument or ask ───────────────────────
+  function appendMessage(convId: string, msg: Message) {
+    setConversations(prev =>
+      prev.map(c => c.id === convId ? { ...c, messages: [...c.messages, msg] } : c)
+    )
+  }
+
+  /** Update a specific message field(s) in place */
+  function patchMessage(convId: string, msgId: string, patch: Partial<Message>) {
+    setConversations(prev =>
+      prev.map(c => c.id !== convId ? c : {
+        ...c,
+        messages: c.messages.map(m => m.id === msgId ? { ...m, ...patch } : m),
+      })
+    )
+  }
+
+  // ── Main send handler ──────────────────────────────────────────────────────
   const handleAsk = useCallback(async (query: string, domain: Domain, file?: File) => {
-    if (loading) return
+    if (loading || streaming) return
 
     const userMsg: Message = {
       id: uid(), role: 'user', content: query, timestamp: new Date(),
@@ -93,49 +104,72 @@ export default function AssistantPage() {
       ])
       setActiveId(convId)
     } else {
-      addMessage(convId, userMsg)
+      appendMessage(convId, userMsg)
     }
 
     setPrefill('')
-    setLoading(true)
 
     try {
+      // ── Document analysis (non-streaming) ─────────────────────────────────
       if (file) {
-        // ── Document analysis path ───────────────────────────────────────────
+        setLoading(true)
         const analysis = await analyzeDocument(file, query || undefined)
-        const assistantMsg: Message = {
+        appendMessage(convId, {
           id: uid(), role: 'assistant', content: '',
           analysis,
           confidence: analysis.confidence,
           duration_ms: analysis.duration_ms,
           sources: analysis.sources,
           timestamp: new Date(),
-        }
-        addMessage(convId, assistantMsg)
-      } else {
-        // ── Regular Q&A path ─────────────────────────────────────────────────
-        const result = await ask({ query, domain, top_k: 10 })
-        const assistantMsg: Message = {
-          id: uid(), role: 'assistant',
-          content: result.answer,
-          sources: result.sources,
-          confidence: result.confidence,
-          duration_ms: result.duration_ms,
-          chunks_used: result.chunks_used,
-          timestamp: new Date(),
-        }
-        addMessage(convId, assistantMsg)
+        })
+        return
       }
+
+      // ── Regular Q&A — streaming ───────────────────────────────────────────
+      setStreaming(true)
+      const assistantId = uid()
+      const t0 = Date.now()
+
+      // Add empty assistant bubble immediately
+      appendMessage(convId, {
+        id: assistantId, role: 'assistant',
+        content: '', timestamp: new Date(),
+        streaming: true,
+      })
+
+      let fullContent = ''
+
+      for await (const chunk of askStream({ query, domain, top_k: 10 })) {
+        if (chunk.error) throw new Error(chunk.error)
+
+        if (chunk.delta) {
+          fullContent += chunk.delta
+          patchMessage(convId, assistantId, { content: fullContent })
+        }
+
+        if (chunk.done) {
+          patchMessage(convId, assistantId, {
+            content: fullContent,
+            sources: chunk.sources ?? [],
+            confidence: chunk.confidence,
+            chunks_used: chunk.chunks_used,
+            duration_ms: Date.now() - t0,
+            streaming: false,
+          })
+        }
+      }
+
     } catch (err) {
-      addMessage(convId, {
+      appendMessage(convId, {
         id: uid(), role: 'assistant',
         content: `حدث خطأ: ${err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم'}`,
         timestamp: new Date(), error: true,
       })
     } finally {
       setLoading(false)
+      setStreaming(false)
     }
-  }, [activeId, loading])
+  }, [activeId, loading, streaming])
 
   const handleExampleAsk = useCallback((q: string) => { setPrefill(q) }, [])
 
@@ -183,7 +217,7 @@ export default function AssistantPage() {
 
         <InputBar
           onSend={handleAsk}
-          loading={loading}
+          loading={loading || streaming}
           initialValue={prefill}
         />
       </main>

@@ -17,6 +17,54 @@ export interface AskResult {
   query: string
 }
 
+export interface StreamChunk {
+  delta?: string
+  done?: boolean
+  error?: string
+  sources?: Source[]
+  confidence?: 'high' | 'medium' | 'low'
+  chunks_used?: number
+  query?: string
+}
+
+/**
+ * Streaming Q&A — yields delta strings, then a final {done: true, sources, confidence, ...} chunk.
+ */
+export async function* askStream(payload: AskPayload): AsyncGenerator<StreamChunk> {
+  const res = await fetch(`${API_URL}/api/ask/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query:  payload.query,
+      top_k:  payload.top_k ?? 10,
+      domain: payload.domain === 'auto' ? null : payload.domain ?? null,
+    }),
+  })
+
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(err.detail ?? 'Stream error')
+  }
+
+  const reader  = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer    = ''
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const raw = line.slice(6).trim()
+      if (!raw) continue
+      try { yield JSON.parse(raw) as StreamChunk } catch { /* ignore */ }
+    }
+  }
+}
+
 export async function ask(payload: AskPayload): Promise<AskResult> {
   const res = await fetch(`${API_URL}/api/ask`, {
     method: 'POST',

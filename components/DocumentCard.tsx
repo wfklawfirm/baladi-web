@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, XCircle, AlertCircle, Copy, Download, ChevronDown, ChevronUp, FileText, Users, Clock, AlertTriangle, Footprints } from 'lucide-react'
-import type { DocumentAnalysis } from '@/lib/types'
+import {
+  CheckCircle, XCircle, AlertCircle, Copy, Download, Printer,
+  ChevronDown, ChevronUp, FileText, Users, Clock, AlertTriangle, Footprints,
+} from 'lucide-react'
+import type { DocumentAnalysis, AnalysisOption } from '@/lib/types'
 import clsx from 'clsx'
 
 interface Props {
@@ -25,6 +28,170 @@ const VALIDITY_CONFIG = {
     label: 'يحتاج إلى معلومات إضافية',
     cls: 'bg-amber-50 border-amber-200 text-amber-700',
   },
+}
+
+/** Open a print window with official Lebanese municipal document formatting */
+function printDecision(option: AnalysisOption, analysis: DocumentAnalysis) {
+  const today = new Date().toLocaleDateString('ar-LB', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  })
+
+  const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>${option.title} — نموذج رسمي</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Naskh Arabic', 'Arial', sans-serif;
+    direction: rtl;
+    background: #fff;
+    color: #1a1a1a;
+    font-size: 14pt;
+    line-height: 2;
+    padding: 40px 60px;
+  }
+  .letterhead {
+    text-align: center;
+    border-bottom: 3px double #8b1a2b;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  .letterhead h1 { font-size: 18pt; font-weight: 700; color: #8b1a2b; }
+  .letterhead h2 { font-size: 14pt; font-weight: 600; color: #333; margin-top: 4px; }
+  .letterhead .ref { font-size: 11pt; color: #555; margin-top: 8px; }
+  .doc-type {
+    background: #f8f4f0;
+    border: 1px solid #d9c7b8;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    color: #8b1a2b;
+    font-size: 15pt;
+    text-align: center;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+    margin-bottom: 20px;
+    font-size: 12pt;
+  }
+  .meta-grid .label { color: #666; font-weight: 600; }
+  .section { margin-bottom: 20px; }
+  .section h3 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1a3a5c;
+    border-bottom: 1px solid #d0d8e4;
+    padding-bottom: 4px;
+    margin-bottom: 10px;
+  }
+  .template-box {
+    background: #fafafa;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 20px 24px;
+    white-space: pre-wrap;
+    font-size: 13pt;
+    line-height: 2.2;
+    margin-bottom: 20px;
+  }
+  .signatures {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 40px;
+  }
+  .sig-box {
+    text-align: center;
+    border-top: 1px solid #999;
+    padding-top: 8px;
+    font-size: 12pt;
+    color: #444;
+  }
+  .footer {
+    margin-top: 48px;
+    text-align: center;
+    font-size: 10pt;
+    color: #888;
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+  }
+  @media print {
+    body { padding: 20px 40px; }
+    button { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="letterhead">
+  <h1>الجمهورية اللبنانية</h1>
+  <h2>بلدية [_______________]</h2>
+  <div class="ref">رقم: [___] / ${new Date().getFullYear()} &nbsp;|&nbsp; التاريخ: ${today}</div>
+</div>
+
+<div class="doc-type">${option.title} — ${analysis.doc_type}</div>
+
+<div class="meta-grid">
+  <div><span class="label">الجهة المختصة:</span> ${analysis.authority || '[___]'}</div>
+  <div><span class="label">المهلة القانونية:</span> ${analysis.time_limits || 'لا توجد مهلة محددة'}</div>
+  <div><span class="label">الوضع القانوني:</span> ${analysis.validity === 'valid' ? 'صحيح' : analysis.validity === 'invalid' ? 'مرفوض' : 'يحتاج استيضاح'}</div>
+  <div><span class="label">السند القانوني:</span> ${analysis.legal_basis?.split('\n')[0] || '[___]'}</div>
+</div>
+
+<div class="section">
+  <h3>ملخص الوثيقة</h3>
+  <p>${analysis.summary}</p>
+</div>
+
+${analysis.legal_basis ? `<div class="section">
+  <h3>الأساس القانوني</h3>
+  <p>${analysis.legal_basis}</p>
+</div>` : ''}
+
+<div class="section">
+  <h3>نص ${option.title}</h3>
+  <div class="template-box">${option.template}</div>
+</div>
+
+${analysis.required_signatures?.length > 0 ? `<div class="section">
+  <h3>التواقيع والموافقات المطلوبة</h3>
+  <ul>${analysis.required_signatures.map((s, i) => `<li>${i + 1}. ${s}</li>`).join('')}</ul>
+</div>` : ''}
+
+<div class="signatures">
+  ${analysis.required_signatures?.slice(0, 2).map(s => `
+  <div class="sig-box">
+    <p>${s}</p>
+    <p style="margin-top:60px; color:#aaa; font-size:11pt;">التوقيع: _______________</p>
+  </div>`).join('') || `
+  <div class="sig-box">
+    <p>رئيس البلدية</p>
+    <p style="margin-top:60px; color:#aaa; font-size:11pt;">التوقيع: _______________</p>
+  </div>
+  <div class="sig-box">
+    <p>الختم الرسمي</p>
+    <p style="margin-top:60px; color:#aaa; font-size:11pt;">_______________________</p>
+  </div>`}
+</div>
+
+<div class="footer">
+  وثيقة صادرة عن نظام Baladi AI — للاستخدام الداخلي — يُرجى مراجعة المستشار القانوني للتحقق قبل التوقيع
+</div>
+
+<script>window.onload = () => window.print();</script>
+</body>
+</html>`
+
+  const win = window.open('', '_blank', 'width=900,height=700')
+  if (!win) return
+  win.document.write(html)
+  win.document.close()
 }
 
 export default function DocumentCard({ analysis }: Props) {
@@ -91,7 +258,7 @@ export default function DocumentCard({ analysis }: Props) {
           </div>
         )}
 
-        {/* Authority + Signatures */}
+        {/* Authority + Time limits */}
         <div className="grid grid-cols-2 gap-3">
           {analysis.authority && (
             <div className="bg-warm-bg rounded-lg px-3 py-2.5">
@@ -194,7 +361,7 @@ export default function DocumentCard({ analysis }: Props) {
                   <>
                     <div className="flex items-center justify-between px-4 py-2 bg-navy/5 border-b border-warm-border">
                       <span className="text-xs font-semibold text-navy">نموذج القرار / الكتاب الرسمي</span>
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         <button
                           onClick={copyTemplate}
                           className="flex items-center gap-1 text-xs text-stone-600 hover:text-burgundy transition-colors"
@@ -208,6 +375,13 @@ export default function DocumentCard({ analysis }: Props) {
                         >
                           <Download size={12} />
                           تحميل
+                        </button>
+                        <button
+                          onClick={() => printDecision(selectedOption, analysis)}
+                          className="flex items-center gap-1 text-xs text-white bg-burgundy hover:bg-burgundy/90 px-2 py-1 rounded-md transition-colors"
+                        >
+                          <Printer size={12} />
+                          طباعة PDF
                         </button>
                       </div>
                     </div>

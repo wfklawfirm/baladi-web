@@ -14,19 +14,18 @@ interface Props { message: Message }
 export default function MessageBubble({ message }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
+  // ── User message ──────────────────────────────────────────────────────────
   if (message.role === 'user') {
     return (
       <div className="flex justify-start animate-slide-up">
         <div className="max-w-[75%]">
           <div className="bg-burgundy text-white rounded-2xl rounded-tr-sm px-4 py-3">
-            {/* File chip */}
             {message.attachedFile && (
               <div className="flex items-center gap-1.5 mb-2 text-white/80 text-xs">
                 <FileText size={12} />
                 <span>{message.attachedFile}</span>
               </div>
             )}
-            {/* Voice indicator */}
             {message.isVoice && (
               <div className="flex items-center gap-1.5 mb-1 text-white/70 text-xs">
                 <Mic size={11} />
@@ -46,7 +45,8 @@ export default function MessageBubble({ message }: Props) {
   }
 
   // ── Assistant message ──────────────────────────────────────────────────────
-  const conf = message.confidence ? CONFIDENCE_CONFIG[message.confidence] : null
+  const conf       = message.confidence ? CONFIDENCE_CONFIG[message.confidence] : null
+  const isStreaming = !!message.streaming && !message.error
 
   // Document analysis result
   if (message.analysis) {
@@ -54,7 +54,6 @@ export default function MessageBubble({ message }: Props) {
       <div className="flex justify-end animate-slide-up">
         <div className="max-w-[90%] w-full">
           <DocumentCard analysis={message.analysis} />
-          {/* Meta */}
           <div className="flex items-center gap-3 mt-2 px-1">
             {conf && (
               <span className={clsx('flex items-center gap-1 text-xs', conf.color)}>
@@ -71,7 +70,7 @@ export default function MessageBubble({ message }: Props) {
     )
   }
 
-  // Regular text answer
+  // ── Streaming / regular text answer ───────────────────────────────────────
   return (
     <div className="flex justify-end animate-slide-up">
       <div className="max-w-[85%] w-full">
@@ -81,13 +80,21 @@ export default function MessageBubble({ message }: Props) {
           ) : (
             <div className="prose-ar">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
+                {message.content || (isStreaming ? '​' : '')}
               </ReactMarkdown>
+              {/* Blinking cursor while streaming */}
+              {isStreaming && (
+                <span
+                  className="inline-block w-0.5 h-4 bg-burgundy ml-0.5 align-middle"
+                  style={{ animation: 'pulse 1s cubic-bezier(0.4,0,0.6,1) infinite' }}
+                />
+              )}
             </div>
           )}
         </div>
 
-        {!message.error && (
+        {/* Meta row — only shown when done */}
+        {!message.error && !isStreaming && (
           <div className="flex items-center justify-between mt-2 px-1">
             <div className="flex items-center gap-3">
               {conf && (

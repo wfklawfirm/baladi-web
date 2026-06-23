@@ -48,6 +48,8 @@ export interface Message {
   attachedFile?: string   // filename
   // Voice
   isVoice?: boolean
+  // Streaming in-progress flag
+  streaming?: boolean
 }
 
 export interface Conversation {
