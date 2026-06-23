@@ -7,24 +7,33 @@ export interface Source {
   score: number
 }
 
+export type OptionType = 'approve' | 'reject' | 'conditional' | 'refer' | 'defer' | 'request_info' | 'council_vote'
+
 export interface AnalysisOption {
   id: string
+  type: OptionType
   title: string
   description: string
+  pros: string
+  cons: string
   template: string
 }
 
 export interface DocumentAnalysis {
   doc_type: string
+  request_category: string
   summary: string
   validity: 'valid' | 'invalid' | 'needs_info'
   validity_reason: string
   legal_basis: string
   authority: string
+  decision_maker: string
+  urgency: string
   required_signatures: string[]
   required_docs: string[]
   risks: string
   options: AnalysisOption[]
+  recommended_option: string
   next_steps: string[]
   time_limits: string
   recommendations: string
