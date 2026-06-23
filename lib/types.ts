@@ -7,6 +7,32 @@ export interface Source {
   score: number
 }
 
+export interface AnalysisOption {
+  id: string
+  title: string
+  description: string
+  template: string
+}
+
+export interface DocumentAnalysis {
+  doc_type: string
+  summary: string
+  validity: 'valid' | 'invalid' | 'needs_info'
+  validity_reason: string
+  legal_basis: string
+  authority: string
+  required_signatures: string[]
+  required_docs: string[]
+  risks: string
+  options: AnalysisOption[]
+  next_steps: string[]
+  time_limits: string
+  recommendations: string
+  sources: Source[]
+  confidence: 'high' | 'medium' | 'low'
+  duration_ms: number
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -17,6 +43,11 @@ export interface Message {
   chunks_used?: number
   timestamp: Date
   error?: boolean
+  // Document analysis
+  analysis?: DocumentAnalysis
+  attachedFile?: string   // filename
+  // Voice
+  isVoice?: boolean
 }
 
 export interface Conversation {

@@ -1,21 +1,31 @@
 'use client'
 
-import { Send } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { Send, Paperclip, Mic, MicOff, X, FileText } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Domain } from '@/lib/types'
 import { DOMAIN_OPTIONS } from '@/lib/types'
+import { transcribeAudio } from '@/lib/api'
 import clsx from 'clsx'
 
 interface Props {
-  onSend: (query: string, domain: Domain) => void
+  onSend: (query: string, domain: Domain, file?: File) => void
   loading: boolean
   initialValue?: string
 }
 
 export default function InputBar({ onSend, loading, initialValue = '' }: Props) {
-  const [query, setQuery]   = useState(initialValue)
-  const [domain, setDomain] = useState<Domain>('auto')
-  const textareaRef          = useRef<HTMLTextAreaElement>(null)
+  const [query, setQuery]           = useState(initialValue)
+  const [domain, setDomain]         = useState<Domain>('auto')
+  const [attachedFile, setFile]     = useState<File | null>(null)
+  const [recording, setRecording]   = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [recSeconds, setRecSeconds] = useState(0)
+
+  const textareaRef  = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const mediaRecRef  = useRef<MediaRecorder | null>(null)
+  const chunksRef    = useRef<Blob[]>([])
+  const timerRef     = useRef<NodeJS.Timeout | null>(null)
 
   // Accept pre-filled query (from example pills)
   useEffect(() => {
@@ -35,9 +45,10 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
 
   function handleSend() {
     const q = query.trim()
-    if (!q || loading) return
-    onSend(q, domain)
+    if ((!q && !attachedFile) || loading) return
+    onSend(q, domain, attachedFile ?? undefined)
     setQuery('')
+    setFile(null)
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
@@ -48,10 +59,74 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
     }
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (f) setFile(f)
+    e.target.value = ''
+  }
+
+  // ── Voice recording ────────────────────────────────────────────────────────
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      chunksRef.current = []
+      mr.ondataavailable = e => chunksRef.current.push(e.data)
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        setTranscribing(true)
+        try {
+          const text = await transcribeAudio(blob)
+          setQuery(prev => (prev ? prev + ' ' + text : text))
+        } catch {
+          // ignore transcription error silently
+        } finally {
+          setTranscribing(false)
+        }
+      }
+      mr.start()
+      mediaRecRef.current = mr
+      setRecording(true)
+      setRecSeconds(0)
+      timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000)
+    } catch {
+      alert('يرجى السماح بالوصول إلى الميكروفون')
+    }
+  }, [])
+
+  const stopRecording = useCallback(() => {
+    mediaRecRef.current?.stop()
+    mediaRecRef.current = null
+    setRecording(false)
+    if (timerRef.current) clearInterval(timerRef.current)
+  }, [])
+
+  const canSend = (query.trim() || attachedFile) && !loading && !recording
+
   return (
     <div className="fixed bottom-0 right-0 left-0 bg-warm-bg border-t border-warm-border px-4 py-3 z-10">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-4 py-3 shadow-sm focus-within:border-burgundy/50 transition-colors">
+
+        {/* Attached file chip */}
+        {attachedFile && (
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-1.5 bg-burgundy/10 border border-burgundy/20 text-burgundy text-xs rounded-lg px-2.5 py-1">
+              <FileText size={12} />
+              <span className="max-w-[200px] truncate">{attachedFile.name}</span>
+              <button
+                onClick={() => setFile(null)}
+                className="hover:text-burgundy-dark ml-0.5"
+              >
+                <X size={11} />
+              </button>
+            </div>
+            <span className="text-[10px] text-warm-muted">سيتم تحليل هذه الوثيقة</span>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-3 py-3 shadow-sm focus-within:border-burgundy/50 transition-colors">
+
           {/* Domain selector */}
           <select
             value={domain}
@@ -63,7 +138,6 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
             ))}
           </select>
 
-          {/* Divider */}
           <div className="w-px h-5 bg-warm-border self-center shrink-0" />
 
           {/* Text input */}
@@ -72,22 +146,65 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="اطرح سؤالك البلدي…"
+            placeholder={recording ? '🔴 جارٍ التسجيل…' : attachedFile ? 'اكتب سؤالك حول الوثيقة (اختياري)…' : 'اطرح سؤالك البلدي…'}
             rows={1}
-            disabled={loading}
+            disabled={loading || recording}
             className={clsx(
               'flex-1 bg-transparent text-sm text-stone-800 placeholder-warm-muted outline-none resize-none leading-6 max-h-36 text-right',
-              loading && 'opacity-50 cursor-not-allowed'
+              (loading || recording) && 'opacity-50 cursor-not-allowed'
             )}
           />
 
-          {/* Send button */}
+          {/* Attach file */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading || recording}
+            title="إرفاق وثيقة"
+            className={clsx(
+              'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all',
+              attachedFile
+                ? 'bg-burgundy/10 text-burgundy'
+                : 'text-warm-muted hover:text-stone-600 hover:bg-warm-bg'
+            )}
+          >
+            <Paperclip size={16} />
+          </button>
+
+          {/* Voice recording */}
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            disabled={loading || transcribing}
+            title={recording ? 'إيقاف التسجيل' : 'تسجيل صوتي'}
+            className={clsx(
+              'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all relative',
+              recording
+                ? 'bg-red-500 text-white'
+                : transcribing
+                ? 'bg-amber-500 text-white'
+                : 'text-warm-muted hover:text-stone-600 hover:bg-warm-bg'
+            )}
+          >
+            {transcribing ? (
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : recording ? (
+              <>
+                <MicOff size={14} />
+                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-red-500 font-medium whitespace-nowrap">
+                  {recSeconds}ث
+                </span>
+              </>
+            ) : (
+              <Mic size={16} />
+            )}
+          </button>
+
+          {/* Send */}
           <button
             onClick={handleSend}
-            disabled={!query.trim() || loading}
+            disabled={!canSend}
             className={clsx(
               'w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all',
-              query.trim() && !loading
+              canSend
                 ? 'bg-burgundy text-white hover:bg-burgundy-dark'
                 : 'bg-warm-bg text-warm-muted cursor-not-allowed'
             )}
@@ -104,6 +221,15 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
           هذه المنصة تقدم معلومات قانونية أولية ولا تُعدّ استشارة قانونية. راجع مستشاراً قانونياً للمسائل الخلافية.
         </p>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+        onChange={handleFileChange}
+        className="hidden"
+      />
     </div>
   )
 }
