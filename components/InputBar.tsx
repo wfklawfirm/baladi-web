@@ -105,7 +105,7 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
   const canSend = (query.trim() || attachedFile) && !loading && !recording
 
   return (
-    <div className="fixed bottom-0 right-0 left-0 bg-warm-bg border-t border-warm-border px-4 py-3 z-10">
+    <div className="bg-warm-bg border-t border-warm-border px-4 py-3">
       <div className="max-w-3xl mx-auto">
 
         {/* Attached file chip */}

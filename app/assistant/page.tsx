@@ -283,7 +283,7 @@ export default function AssistantPage() {
           {messages.length === 0 ? (
             <LandingView onAsk={handleExampleAsk} />
           ) : (
-            <div className="max-w-3xl mx-auto px-4 pt-6 pb-44 space-y-5">
+            <div className="max-w-3xl mx-auto px-4 pt-6 pb-8 space-y-5">
               {messages.map(msg => (
                 <MessageBubble
                   key={msg.id}
