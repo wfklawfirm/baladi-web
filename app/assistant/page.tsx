@@ -241,7 +241,7 @@ export default function AssistantPage() {
         onToggle={() => setSidebarOpen(o => !o)}
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-300">
         <header className="flex items-center gap-2 px-4 py-3 border-b border-warm-border bg-warm-bg/80 backdrop-blur-sm">
           {!sidebarOpen && (
             <button

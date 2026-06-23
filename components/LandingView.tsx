@@ -39,7 +39,7 @@ interface Props {
 
 export default function LandingView({ onAsk }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 pb-28 animate-fade-in">
+    <div className="flex flex-col items-center justify-center h-full px-6 pb-28 animate-fade-in transition-all duration-300">
       {/* Logo */}
       <div className="mb-6">
         <Image
