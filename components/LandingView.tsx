@@ -39,21 +39,21 @@ interface Props {
 
 export default function LandingView({ onAsk }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 pb-6 animate-fade-in transition-all duration-300">
+    <div className="flex flex-col items-center justify-center min-h-full px-4 py-6 animate-fade-in transition-all duration-300">
       {/* Logo */}
-      <div className="mb-6">
+      <div className="mb-4">
         <Image
           src="/logo.png"
           alt="Baladi AI"
-          width={160}
-          height={160}
-          className="object-contain drop-shadow-sm"
+          width={120}
+          height={120}
+          className="object-contain drop-shadow-sm w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40"
           priority
         />
       </div>
 
       {/* Heading */}
-      <h1 className="text-2xl font-bold text-navy text-center mb-1">
+      <h1 className="text-xl sm:text-2xl font-bold text-navy text-center mb-1">
         كيف يمكنني مساعدتك اليوم؟
       </h1>
       <div className="flex items-center gap-3 mb-2">
@@ -66,7 +66,7 @@ export default function LandingView({ onAsk }: Props) {
       </p>
 
       {/* Feature cards */}
-      <div className="grid grid-cols-2 gap-3 w-full max-w-xl mb-8">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full max-w-xl mb-6">
         {FEATURES.map(f => (
           <div
             key={f.title}

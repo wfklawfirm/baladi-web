@@ -103,7 +103,7 @@ ${rows}
 }
 
 export default function AssistantPage() {
-  const [sidebarOpen, setSidebarOpen]   = useState(true)
+  const [sidebarOpen, setSidebarOpen]   = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeId, setActiveId]           = useState<string | null>(null)
   const [loading, setLoading]             = useState(false)
@@ -113,6 +113,11 @@ export default function AssistantPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setConversations(loadConversations()) }, [])
+
+  // Open sidebar by default on desktop only
+  useEffect(() => {
+    if (window.innerWidth >= 768) setSidebarOpen(true)
+  }, [])
 
   const activeConv = conversations.find(c => c.id === activeId) ?? null
   const messages   = activeConv?.messages ?? []
@@ -140,8 +145,17 @@ export default function AssistantPage() {
     )
   }
 
-  const newChat    = useCallback(() => { setActiveId(null); setPrefill('') }, [])
-  const selectChat = useCallback((id: string) => { setActiveId(id); setPrefill('') }, [])
+  const newChat    = useCallback(() => {
+    setActiveId(null)
+    setPrefill('')
+    if (window.innerWidth < 768) setSidebarOpen(false)
+  }, [])
+
+  const selectChat = useCallback((id: string) => {
+    setActiveId(id)
+    setPrefill('')
+    if (window.innerWidth < 768) setSidebarOpen(false)
+  }, [])
   const deleteChat = useCallback((id: string) => {
     setConversations(prev => prev.filter(c => c.id !== id))
     if (activeId === id) setActiveId(null)

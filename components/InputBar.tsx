@@ -127,18 +127,18 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
 
         <div className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-3 py-3 shadow-sm focus-within:border-burgundy/50 transition-colors">
 
-          {/* Domain selector */}
+          {/* Domain selector — hidden on mobile to save space */}
           <select
             value={domain}
             onChange={e => setDomain(e.target.value as Domain)}
-            className="text-xs text-stone-600 bg-warm-bg border border-warm-border rounded-lg px-2 py-1.5 outline-none cursor-pointer shrink-0 mb-0.5"
+            className="hidden sm:block text-xs text-stone-600 bg-warm-bg border border-warm-border rounded-lg px-2 py-1.5 outline-none cursor-pointer shrink-0 mb-0.5"
           >
             {DOMAIN_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
 
-          <div className="w-px h-5 bg-warm-border self-center shrink-0" />
+          <div className="hidden sm:block w-px h-5 bg-warm-border self-center shrink-0" />
 
           {/* Text input */}
           <textarea
