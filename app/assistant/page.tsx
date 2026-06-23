@@ -7,7 +7,18 @@ import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
 import InputBar from '@/components/InputBar'
 import { askStream, analyzeDocument } from '@/lib/api'
+import type { HistoryMessage } from '@/lib/api'
 import type { Message, Conversation, Domain } from '@/lib/types'
+
+const MAX_HISTORY_TURNS = 6
+
+/** Extract the last N text-based turns for conversation context */
+function buildHistory(messages: Message[]): HistoryMessage[] {
+  return messages
+    .filter(m => !m.error && !m.analysis && m.content.trim())
+    .slice(-MAX_HISTORY_TURNS)
+    .map(m => ({ role: m.role, content: m.content }))
+}
 
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2)
@@ -130,6 +141,11 @@ export default function AssistantPage() {
       const assistantId = uid()
       const t0 = Date.now()
 
+      // Snapshot current messages for history BEFORE appending user msg
+      // (userMsg already appended above)
+      const currentMsgs = conversations.find(c => c.id === convId)?.messages ?? []
+      const history = buildHistory([...currentMsgs, userMsg])
+
       // Add empty assistant bubble immediately
       appendMessage(convId, {
         id: assistantId, role: 'assistant',
@@ -139,7 +155,7 @@ export default function AssistantPage() {
 
       let fullContent = ''
 
-      for await (const chunk of askStream({ query, domain, top_k: 10 })) {
+      for await (const chunk of askStream({ query, domain, top_k: 10, history })) {
         if (chunk.error) throw new Error(chunk.error)
 
         if (chunk.delta) {
@@ -155,6 +171,7 @@ export default function AssistantPage() {
             chunks_used: chunk.chunks_used,
             duration_ms: Date.now() - t0,
             streaming: false,
+            follow_up: chunk.follow_up ?? [],
           })
         }
       }
@@ -207,7 +224,11 @@ export default function AssistantPage() {
           ) : (
             <div className="max-w-3xl mx-auto px-4 pt-6 pb-44 space-y-5">
               {messages.map(msg => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onFollowUp={(q) => handleAsk(q, 'auto')}
+                />
               ))}
               {loading && <LoadingBubble />}
               <div ref={bottomRef} />

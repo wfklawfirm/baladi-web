@@ -9,9 +9,12 @@ import { CONFIDENCE_CONFIG } from '@/lib/types'
 import DocumentCard from './DocumentCard'
 import clsx from 'clsx'
 
-interface Props { message: Message }
+interface Props {
+  message: Message
+  onFollowUp?: (q: string) => void
+}
 
-export default function MessageBubble({ message }: Props) {
+export default function MessageBubble({ message, onFollowUp }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
   // ── User message ──────────────────────────────────────────────────────────
@@ -120,6 +123,21 @@ export default function MessageBubble({ message }: Props) {
                 المصادر ({message.sources.length})
               </button>
             )}
+          </div>
+        )}
+
+        {/* Follow-up question chips */}
+        {!isStreaming && message.follow_up && message.follow_up.length > 0 && onFollowUp && (
+          <div className="mt-3 flex flex-col gap-1.5">
+            {message.follow_up.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => onFollowUp(q)}
+                className="text-right text-xs text-navy bg-navy/5 border border-navy/15 hover:bg-navy/10 hover:border-navy/30 rounded-xl px-3 py-2 transition-all leading-5"
+              >
+                ↩ {q}
+              </button>
+            ))}
           </div>
         )}
 

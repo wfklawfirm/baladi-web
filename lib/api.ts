@@ -2,10 +2,16 @@ import type { Domain, Source, DocumentAnalysis } from './types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+export interface HistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface AskPayload {
   query: string
   top_k?: number
   domain?: Domain
+  history?: HistoryMessage[]
 }
 
 export interface AskResult {
@@ -25,6 +31,7 @@ export interface StreamChunk {
   confidence?: 'high' | 'medium' | 'low'
   chunks_used?: number
   query?: string
+  follow_up?: string[]
 }
 
 /**
@@ -35,9 +42,10 @@ export async function* askStream(payload: AskPayload): AsyncGenerator<StreamChun
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query:  payload.query,
-      top_k:  payload.top_k ?? 10,
-      domain: payload.domain === 'auto' ? null : payload.domain ?? null,
+      query:   payload.query,
+      top_k:   payload.top_k ?? 10,
+      domain:  payload.domain === 'auto' ? null : payload.domain ?? null,
+      history: payload.history ?? [],
     }),
   })
 
@@ -70,9 +78,10 @@ export async function ask(payload: AskPayload): Promise<AskResult> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query:  payload.query,
-      top_k:  payload.top_k ?? 10,
-      domain: payload.domain === 'auto' ? null : payload.domain ?? null,
+      query:   payload.query,
+      top_k:   payload.top_k ?? 10,
+      domain:  payload.domain === 'auto' ? null : payload.domain ?? null,
+      history: payload.history ?? [],
     }),
   })
   if (!res.ok) {

@@ -50,6 +50,8 @@ export interface Message {
   isVoice?: boolean
   // Streaming in-progress flag
   streaming?: boolean
+  // Follow-up question suggestions
+  follow_up?: string[]
 }
 
 export interface Conversation {
