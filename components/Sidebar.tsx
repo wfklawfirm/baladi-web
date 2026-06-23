@@ -1,6 +1,7 @@
 'use client'
 
 import { Plus, Search, MessageSquare, ChevronLeft, Trash2 } from 'lucide-react'
+import Image from 'next/image'
 import type { Conversation } from '@/lib/types'
 import clsx from 'clsx'
 
@@ -38,10 +39,13 @@ export default function Sidebar({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-warm-border">
         <div className="flex items-center gap-2">
-          {/* Logo mark */}
-          <div className="w-7 h-7 bg-burgundy rounded-md flex items-center justify-center">
-            <span className="text-white text-xs font-bold">ب</span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Baladi AI"
+            width={32}
+            height={32}
+            className="object-contain rounded-md"
+          />
           <span className="font-semibold text-navy text-sm">Baladi AI</span>
         </div>
         <button

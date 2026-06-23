@@ -40,26 +40,16 @@ interface Props {
 export default function LandingView({ onAsk }: Props) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 pb-28 animate-fade-in">
-      {/* Logo card */}
-      <div className="w-32 h-32 bg-white rounded-2xl shadow-sm border border-warm-border flex items-center justify-center mb-6">
+      {/* Logo */}
+      <div className="mb-6">
         <Image
           src="/logo.png"
           alt="Baladi AI"
-          width={96}
-          height={96}
-          className="object-contain"
-          onError={e => {
-            // Fallback if logo not found
-            const t = e.target as HTMLImageElement
-            t.style.display = 'none'
-          }}
+          width={160}
+          height={160}
+          className="object-contain drop-shadow-sm"
+          priority
         />
-        {/* Fallback text shown if image fails */}
-        <div className="hidden text-center">
-          <div className="w-12 h-12 bg-burgundy rounded-xl flex items-center justify-center mx-auto mb-1">
-            <span className="text-white text-xl font-bold">ب</span>
-          </div>
-        </div>
       </div>
 
       {/* Heading */}
