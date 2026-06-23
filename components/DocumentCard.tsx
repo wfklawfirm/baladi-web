@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, FileText, Users, Clock, AlertTriangle, Footprints,
 } from 'lucide-react'
 import type { DocumentAnalysis, AnalysisOption } from '@/lib/types'
+import { loadSettings, applySettings } from '@/lib/settings'
 import clsx from 'clsx'
 
 interface Props {
@@ -32,15 +33,24 @@ const VALIDITY_CONFIG = {
 
 /** Open a print window with official Lebanese municipal document formatting */
 function printDecision(option: AnalysisOption, analysis: DocumentAnalysis) {
+  const settings = loadSettings()
   const today = new Date().toLocaleDateString('ar-LB', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
+
+  const mun    = settings.municipality ? `بلدية ${settings.municipality}` : 'بلدية [_______________]'
+  const mayor  = settings.mayor        || '[رئيس البلدية]'
+  const region = settings.region       ? `قضاء ${settings.region}` : '[القضاء]'
+  const phone  = settings.phone        || '[رقم الهاتف]'
+
+  // Apply settings to the template
+  const filledTemplate = applySettings(option.template, settings)
 
   const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>${option.title} — نموذج رسمي</title>
+<title>${option.title} — ${mun}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -131,7 +141,8 @@ function printDecision(option: AnalysisOption, analysis: DocumentAnalysis) {
 
 <div class="letterhead">
   <h1>الجمهورية اللبنانية</h1>
-  <h2>بلدية [_______________]</h2>
+  <h2>${mun}</h2>
+  <div class="ref">${region} &nbsp;|&nbsp; ${phone}</div>
   <div class="ref">رقم: [___] / ${new Date().getFullYear()} &nbsp;|&nbsp; التاريخ: ${today}</div>
 </div>
 
@@ -156,7 +167,7 @@ ${analysis.legal_basis ? `<div class="section">
 
 <div class="section">
   <h3>نص ${option.title}</h3>
-  <div class="template-box">${option.template}</div>
+  <div class="template-box">${filledTemplate}</div>
 </div>
 
 ${analysis.required_signatures?.length > 0 ? `<div class="section">
@@ -171,7 +182,7 @@ ${analysis.required_signatures?.length > 0 ? `<div class="section">
     <p style="margin-top:60px; color:#aaa; font-size:11pt;">التوقيع: _______________</p>
   </div>`).join('') || `
   <div class="sig-box">
-    <p>رئيس البلدية</p>
+    <p>رئيس البلدية — ${mayor}</p>
     <p style="margin-top:60px; color:#aaa; font-size:11pt;">التوقيع: _______________</p>
   </div>
   <div class="sig-box">
