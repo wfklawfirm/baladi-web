@@ -53,17 +53,23 @@ export default function LandingView({ onAsk }: Props) {
       </div>
 
       {/* Heading */}
-      <h1 className="text-xl sm:text-2xl font-bold text-navy text-center mb-1">
-        كيف يمكنني مساعدتك اليوم؟
+      <h1 className="text-xl sm:text-2xl font-bold text-navy text-center mb-2">
+        مستشارك القانوني والإداري البلدي
       </h1>
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-3">
         <div className="h-px w-16 bg-burgundy/30" />
         <div className="w-1.5 h-1.5 bg-burgundy rounded-full" />
         <div className="h-px w-16 bg-burgundy/30" />
       </div>
-      <p className="text-sm text-warm-muted text-center mb-8 max-w-sm">
-        اطرح سؤالك القانوني أو الإداري البلدي واحصل على إجابة مستندة إلى المصادر
+      <p className="text-sm text-warm-muted text-center mb-2 max-w-md leading-6">
+        نظام ذكاء اصطناعي متخصص بقانون البلديات اللبناني — يحلّل أسئلتك القانونية والإدارية
+        ويستند إلى النصوص التشريعية والمراسيم والاجتهادات القضائية المعتمدة
       </p>
+      <div className="flex items-center gap-2 mb-7">
+        <span className="text-[10px] text-warm-muted bg-warm-bg border border-warm-border rounded-full px-2.5 py-1">قانون 118/1977</span>
+        <span className="text-[10px] text-warm-muted bg-warm-bg border border-warm-border rounded-full px-2.5 py-1">مجلس شورى الدولة</span>
+        <span className="text-[10px] text-warm-muted bg-warm-bg border border-warm-border rounded-full px-2.5 py-1">منشورات وزارة الداخلية</span>
+      </div>
 
       {/* Feature cards */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full max-w-xl mb-6">
