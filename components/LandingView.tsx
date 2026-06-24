@@ -91,31 +91,15 @@ export default function LandingView({ onAsk }: Props) {
           </p>
         </div>
 
-        {/* ── Stats ─────────────────────────────────────────────────────── */}
-        <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
-          {STATS.map(s => (
-            <div
-              key={s.label}
-              className="flex flex-col items-center bg-white border border-[#E8ECF1] rounded-2xl py-4 px-3"
-              style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}
-            >
-              <span className={`text-2xl sm:text-3xl font-bold leading-none mb-1.5 ${s.color}`}>
-                {s.value}
-              </span>
-              <span className="text-[10.5px] text-[#9CA3AF] text-center leading-4">{s.label}</span>
-            </div>
-          ))}
-        </div>
-
         {/* ── Feature cards ─────────────────────────────────────────────── */}
         <div className="w-full grid grid-cols-2 gap-3 mb-7">
           {FEATURES.map(f => (
             <div
               key={f.title}
-              className="flex flex-col gap-3 rounded-2xl border border-[#E6EBF2] bg-[#F8FAFC] p-4 transition-all duration-200 hover:shadow-sm hover:border-[#D0DAE8] hover:bg-white"
+              className="flex flex-col items-center gap-3 rounded-2xl border border-[#E6EBF2] bg-[#F8FAFC] px-4 py-5 transition-all duration-200 hover:shadow-sm hover:border-[#D0DAE8] hover:bg-white"
             >
-              <span className="text-[26px] leading-none">{f.icon}</span>
-              <div>
+              <span className="text-[28px] leading-none">{f.icon}</span>
+              <div className="text-center">
                 <p className="text-[13.5px] font-bold mb-1 leading-snug text-[#1B2F4E]">
                   {f.title}
                 </p>
