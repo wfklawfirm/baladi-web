@@ -71,7 +71,7 @@ export interface Message {
   // Action suggestions after answer
   actions?: FollowUpAction[]
   // Clarification options (shown before answering)
-  clarifyOptions?: { label: string; prompt: string }[]
+  clarifyOptions?: { label: string; prompt: string; type?: string }[]
   clarifyLoading?: boolean
   clarifyDocSummary?: string
 }

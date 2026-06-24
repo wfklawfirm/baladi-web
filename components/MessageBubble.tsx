@@ -271,6 +271,56 @@ function useTypewriter(fullContent: string, isStreaming: boolean): string {
   return displayed
 }
 
+// ── Clarification bubble — option type styles ────────────────────────────────
+const CLARIFY_OPTION_STYLES = {
+  law: {
+    icon: <BookOpen size={14} />,
+    bg: 'bg-emerald-50 hover:bg-emerald-100',
+    border: 'border-emerald-200 hover:border-emerald-400',
+    text: 'text-emerald-700',
+    badge: 'bg-emerald-100 text-emerald-700',
+    numBg: 'bg-emerald-600',
+    label: 'قانون',
+  },
+  steps: {
+    icon: <ListOrdered size={14} />,
+    bg: 'bg-[#EEF4FF] hover:bg-[#E0ECFF]',
+    border: 'border-[#C3D8F7] hover:border-navy/40',
+    text: 'text-navy',
+    badge: 'bg-navy/10 text-navy',
+    numBg: 'bg-navy',
+    label: 'خطوات',
+  },
+  template: {
+    icon: <FileSignature size={14} />,
+    bg: 'bg-[#FDF4F5] hover:bg-[#FAE8EB]',
+    border: 'border-[#EDD0D4] hover:border-burgundy/40',
+    text: 'text-burgundy',
+    badge: 'bg-burgundy/10 text-burgundy',
+    numBg: 'bg-burgundy',
+    label: 'نموذج',
+  },
+  risks: {
+    icon: <AlertTriangle size={14} />,
+    bg: 'bg-amber-50 hover:bg-amber-100',
+    border: 'border-amber-200 hover:border-amber-400',
+    text: 'text-amber-700',
+    badge: 'bg-amber-100 text-amber-700',
+    numBg: 'bg-amber-500',
+    label: 'مخاطر',
+  },
+  example: {
+    icon: <Lightbulb size={14} />,
+    bg: 'bg-purple-50 hover:bg-purple-100',
+    border: 'border-purple-200 hover:border-purple-400',
+    text: 'text-purple-700',
+    badge: 'bg-purple-100 text-purple-700',
+    numBg: 'bg-purple-600',
+    label: 'مثال',
+  },
+}
+const ARABIC_NUMS = ['١', '٢', '٣', '٤', '٥']
+
 // ── Clarification bubble ─────────────────────────────────────────────────────
 function ClarificationBubble({
   loading,
@@ -279,7 +329,7 @@ function ClarificationBubble({
   onPick,
 }: {
   loading?: boolean
-  options?: { label: string; prompt: string }[]
+  options?: { label: string; prompt: string; type?: string }[]
   docSummary?: string
   onPick?: (prompt: string) => void
 }) {
@@ -297,28 +347,93 @@ function ClarificationBubble({
     )
   }
   if (!options || options.length === 0) return null
+
   return (
     <div className="flex justify-end animate-slide-up">
-      <div className="max-w-[85%] w-full">
-        <div className="bg-white border border-warm-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
-          {docSummary && (
-            <div className="mb-3 pb-3 border-b border-warm-border">
-              <p className="text-[11px] text-warm-muted font-semibold uppercase tracking-wide mb-1">ما قرأته في الوثيقة</p>
-              <p className="text-sm text-stone-600 leading-6">{docSummary}</p>
+      <div className="max-w-[88%] w-full">
+        <div className="bg-white border border-warm-border rounded-2xl rounded-tl-sm overflow-hidden shadow-sm">
+
+          {/* ── Header ─────────────────────────────────────────────── */}
+          <div className="px-5 pt-4 pb-3.5 border-b border-[#F0F4F8]">
+            {docSummary && (
+              <div className="mb-3.5 pb-3.5 border-b border-[#F0F4F8]">
+                <p className="text-[10px] font-bold text-warm-muted uppercase tracking-[0.12em] mb-1.5">
+                  ما قرأته في الوثيقة
+                </p>
+                <p className="text-[13px] text-stone-600 leading-[1.75]">{docSummary}</p>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full bg-burgundy shrink-0"
+                style={{ animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }}
+              />
+              <p className="text-[12.5px] font-semibold text-[#1B2F4E]">
+                حللنا سؤالك — اختر ما يناسبك:
+              </p>
             </div>
-          )}
-          <p className="text-xs text-warm-muted mb-3 font-medium">حدد ما تريده بالضبط:</p>
-          <div className="flex flex-col gap-2">
-            {options.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => onPick?.(opt.prompt)}
-                className="text-right text-sm bg-navy/5 border border-navy/15 hover:bg-navy/10 hover:border-navy/30 rounded-xl px-4 py-2.5 text-navy transition-all duration-150"
-              >
-                {opt.label}
-              </button>
-            ))}
           </div>
+
+          {/* ── Options ────────────────────────────────────────────── */}
+          <div className="p-3 flex flex-col gap-2">
+            {options.map((opt, i) => {
+              const typeKey = (opt.type && opt.type in CLARIFY_OPTION_STYLES)
+                ? opt.type as keyof typeof CLARIFY_OPTION_STYLES
+                : 'steps'
+              const s = CLARIFY_OPTION_STYLES[typeKey]
+              return (
+                <button
+                  key={i}
+                  onClick={() => onPick?.(opt.prompt)}
+                  className={clsx(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl border text-right transition-all duration-200 group',
+                    s.bg, s.border
+                  )}
+                >
+                  {/* Arabic number badge */}
+                  <div
+                    className={clsx(
+                      'shrink-0 w-[26px] h-[26px] rounded-full flex items-center justify-center',
+                      'text-[12px] font-bold text-white leading-none',
+                      s.numBg
+                    )}
+                  >
+                    {ARABIC_NUMS[i] ?? i + 1}
+                  </div>
+
+                  {/* Label */}
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className={clsx('shrink-0 opacity-80', s.text)}>{s.icon}</span>
+                    <span className={clsx('text-[13.5px] font-semibold leading-snug', s.text)}>
+                      {opt.label}
+                    </span>
+                  </div>
+
+                  {/* Type badge */}
+                  <span
+                    className={clsx(
+                      'shrink-0 text-[10px] font-bold px-2.5 py-0.5 rounded-full',
+                      s.badge
+                    )}
+                  >
+                    {s.label}
+                  </span>
+
+                  {/* Hover arrow */}
+                  <span
+                    className={clsx(
+                      'shrink-0 text-[13px] font-bold opacity-0 group-hover:opacity-100',
+                      'transition-all duration-150 group-hover:-translate-x-0.5',
+                      s.text
+                    )}
+                  >
+                    ←
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
         </div>
       </div>
     </div>
