@@ -13,6 +13,7 @@ import clsx from 'clsx'
 interface Props {
   message: Message
   onFollowUp?: (q: string) => void
+  onClarify?: (prompt: string) => void
 }
 
 // ── Template block parser ─────────────────────────────────────────────────────
@@ -270,8 +271,54 @@ function useTypewriter(fullContent: string, isStreaming: boolean): string {
   return displayed
 }
 
+// ── Clarification bubble ─────────────────────────────────────────────────────
+function ClarificationBubble({
+  loading,
+  options,
+  onPick,
+}: {
+  loading?: boolean
+  options?: { label: string; prompt: string }[]
+  onPick?: (prompt: string) => void
+}) {
+  if (loading) {
+    return (
+      <div className="flex justify-end animate-fade-in">
+        <div className="bg-white border border-warm-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+          <div className="flex items-center gap-1.5 h-5">
+            <span className="loading-dot" />
+            <span className="loading-dot" />
+            <span className="loading-dot" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+  if (!options || options.length === 0) return null
+  return (
+    <div className="flex justify-end animate-slide-up">
+      <div className="max-w-[85%] w-full">
+        <div className="bg-white border border-warm-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+          <p className="text-xs text-warm-muted mb-3 font-medium">حدد ما تريده بالضبط:</p>
+          <div className="flex flex-col gap-2">
+            {options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => onPick?.(opt.prompt)}
+                className="text-right text-sm bg-navy/5 border border-navy/15 hover:bg-navy/10 hover:border-navy/30 rounded-xl px-4 py-2.5 text-navy transition-all duration-150"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
-export default function MessageBubble({ message, onFollowUp }: Props) {
+export default function MessageBubble({ message, onFollowUp, onClarify }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
   // ── User message ─────────────────────────────────────────────────────────
@@ -301,6 +348,17 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // ── Assistant — clarification bubble ────────────────────────────────────
+  if (message.clarifyLoading || message.clarifyOptions) {
+    return (
+      <ClarificationBubble
+        loading={message.clarifyLoading}
+        options={message.clarifyOptions}
+        onPick={onClarify}
+      />
     )
   }
 

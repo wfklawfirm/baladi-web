@@ -8,7 +8,7 @@ import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
 import InputBar from '@/components/InputBar'
 import SettingsModal from '@/components/SettingsModal'
-import { askStream, analyzeDocument } from '@/lib/api'
+import { askStream, analyzeDocument, apiClarify } from '@/lib/api'
 import type { HistoryMessage } from '@/lib/api'
 import type { Message, Conversation, Domain } from '@/lib/types'
 import { loadSettings } from '@/lib/settings'
@@ -180,6 +180,21 @@ export default function AssistantPage() {
     if (activeId === id) setActiveId(null)
   }, [activeId])
 
+  // Called when user picks a clarification option — skip clarify step
+  const handleClarifiedAsk = useCallback(async (prompt: string, domain: Domain) => {
+    if (loading || streaming) return
+    const convId = activeId
+    if (!convId) return
+    // Remove the clarification message and proceed directly to answer
+    setConversations(prev => prev.map(c => c.id !== convId ? c : {
+      ...c, messages: c.messages.filter(m => !m.clarifyOptions && !m.clarifyLoading),
+    }))
+    // Add user selection as a user message
+    const selMsg: Message = { id: uid(), role: 'user', content: prompt, timestamp: new Date() }
+    appendMessage(convId, selMsg)
+    await streamAnswer(convId, prompt, domain, conversations.find(c => c.id === convId)?.messages ?? [])
+  }, [loading, streaming, activeId, conversations])  // eslint-disable-line
+
   const handleAsk = useCallback(async (query: string, domain: Domain, file?: File) => {
     if (loading || streaming) return
 
@@ -216,44 +231,32 @@ export default function AssistantPage() {
         return
       }
 
-      setStreaming(true)
-      const assistantId = uid()
-      const t0 = Date.now()
-      const currentMsgs = conversations.find(c => c.id === convId)?.messages ?? []
-      const history = buildHistory([...currentMsgs, userMsg])
-
-      appendMessage(convId, {
-        id: assistantId, role: 'assistant',
-        content: '', timestamp: new Date(), streaming: true, streamPhase: 'searching',
-      })
-
-      let fullContent = ''
-
-      for await (const chunk of askStream({ query, domain, top_k: 10, history })) {
-        if (chunk.error) throw new Error(chunk.error)
-        if (chunk.phase) {
-          patchMessage(convId, assistantId, { streamPhase: chunk.phase })
-        }
-        if (chunk.delta) {
-          fullContent += chunk.delta
-          patchMessage(convId, assistantId, { content: fullContent, streamPhase: 'generating' })
-        }
-        if (chunk.done) {
-          patchMessage(convId, assistantId, {
-            content: fullContent,
-            sources: chunk.sources ?? [],
-            confidence: chunk.confidence,
-            chunks_used: chunk.chunks_used,
-            duration_ms: Date.now() - t0,
-            streaming: false,
-            streamPhase: undefined,
-            actions: (chunk.actions ?? []) as any,
+      // ── Clarification step (skip for short follow-ups < 15 chars) ──────────
+      if (query.trim().length > 15) {
+        const clarifyMsgId = uid()
+        appendMessage(convId, {
+          id: clarifyMsgId, role: 'assistant', content: '',
+          timestamp: new Date(), clarifyLoading: true,
+        })
+        const opts = await apiClarify(query)
+        if (opts.length > 0) {
+          patchMessage(convId, clarifyMsgId, {
+            clarifyLoading: false,
+            clarifyOptions: opts,
           })
+          return  // wait for user selection
         }
+        // No options returned — remove clarify bubble and answer directly
+        setConversations(prev => prev.map(c => c.id !== convId ? c : {
+          ...c, messages: c.messages.filter(m => m.id !== clarifyMsgId),
+        }))
       }
 
+      await streamAnswer(convId, query, domain, [...(conversations.find(c => c.id === convId)?.messages ?? []), userMsg])
+
     } catch (err) {
-      appendMessage(convId, {
+      const cid = activeId
+      if (cid) appendMessage(cid, {
         id: uid(), role: 'assistant',
         content: `حدث خطأ: ${err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم'}`,
         timestamp: new Date(), error: true,
@@ -262,7 +265,47 @@ export default function AssistantPage() {
       setLoading(false)
       setStreaming(false)
     }
-  }, [activeId, loading, streaming, conversations])
+  }, [activeId, loading, streaming, conversations]) // eslint-disable-line
+
+  const streamAnswer = useCallback(async (convId: string, query: string, domain: Domain, allMsgs: Message[]) => {
+    setStreaming(true)
+    const assistantId = uid()
+    const t0 = Date.now()
+    const history = buildHistory(allMsgs)
+
+    appendMessage(convId, {
+      id: assistantId, role: 'assistant',
+      content: '', timestamp: new Date(), streaming: true, streamPhase: 'searching',
+    })
+
+    try {
+      let fullContent = ''
+      for await (const chunk of askStream({ query, domain, top_k: 10, history })) {
+        if (chunk.error) throw new Error(chunk.error)
+        if (chunk.phase) patchMessage(convId, assistantId, { streamPhase: chunk.phase })
+        if (chunk.delta) {
+          fullContent += chunk.delta
+          patchMessage(convId, assistantId, { content: fullContent, streamPhase: 'generating' })
+        }
+        if (chunk.done) {
+          patchMessage(convId, assistantId, {
+            content: fullContent, sources: chunk.sources ?? [],
+            confidence: chunk.confidence, chunks_used: chunk.chunks_used,
+            duration_ms: Date.now() - t0, streaming: false, streamPhase: undefined,
+            actions: (chunk.actions ?? []) as any,
+          })
+        }
+      }
+    } catch (err) {
+      patchMessage(convId, assistantId, {
+        content: `حدث خطأ: ${err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم'}`,
+        streaming: false, error: true,
+      })
+    } finally {
+      setLoading(false)
+      setStreaming(false)
+    }
+  }, []) // eslint-disable-line
 
   const handleExampleAsk = useCallback((q: string) => { setPrefill(q) }, [])
 
@@ -352,6 +395,7 @@ export default function AssistantPage() {
                   key={msg.id}
                   message={msg}
                   onFollowUp={(q) => handleAsk(q, 'auto')}
+                  onClarify={(q) => handleClarifiedAsk(q, 'auto')}
                 />
               ))}
               {loading && <LoadingBubble />}

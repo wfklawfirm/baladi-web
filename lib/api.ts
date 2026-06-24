@@ -157,6 +157,20 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
   return data.text
 }
 
+export interface ClarifyOption { label: string; prompt: string }
+
+export async function apiClarify(query: string): Promise<ClarifyOption[]> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('baladi_token') : null
+  const res = await fetch(`${API_URL}/api/clarify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ query }),
+  })
+  if (!res.ok) return []
+  const data = await res.json().catch(() => ({ options: [] }))
+  return data.options ?? []
+}
+
 export async function checkHealth(): Promise<{ status: string; points: number }> {
   const res = await fetch(`${API_URL}/api/health`, { cache: 'no-store' })
   if (!res.ok) throw new Error('API unavailable')

@@ -68,8 +68,11 @@ export interface Message {
   // Streaming
   streaming?: boolean
   streamPhase?: 'searching' | 'generating'
-  // Action suggestions (replaces follow_up)
+  // Action suggestions after answer
   actions?: FollowUpAction[]
+  // Clarification options (shown before answering)
+  clarifyOptions?: { label: string; prompt: string }[]
+  clarifyLoading?: boolean
 }
 
 export interface Conversation {
