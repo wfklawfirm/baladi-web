@@ -224,16 +224,19 @@ export default function AssistantPage() {
 
       appendMessage(convId, {
         id: assistantId, role: 'assistant',
-        content: '', timestamp: new Date(), streaming: true,
+        content: '', timestamp: new Date(), streaming: true, streamPhase: 'searching',
       })
 
       let fullContent = ''
 
       for await (const chunk of askStream({ query, domain, top_k: 10, history })) {
         if (chunk.error) throw new Error(chunk.error)
+        if (chunk.phase) {
+          patchMessage(convId, assistantId, { streamPhase: chunk.phase })
+        }
         if (chunk.delta) {
           fullContent += chunk.delta
-          patchMessage(convId, assistantId, { content: fullContent })
+          patchMessage(convId, assistantId, { content: fullContent, streamPhase: 'generating' })
         }
         if (chunk.done) {
           patchMessage(convId, assistantId, {
@@ -243,6 +246,7 @@ export default function AssistantPage() {
             chunks_used: chunk.chunks_used,
             duration_ms: Date.now() - t0,
             streaming: false,
+            streamPhase: undefined,
             follow_up: chunk.follow_up ?? [],
           })
         }

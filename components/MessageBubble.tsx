@@ -3,7 +3,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ChevronDown, ChevronUp, Mic, FileText, Copy, Download, Printer, CheckCircle, FileDown } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Message } from '@/lib/types'
 import { CONFIDENCE_CONFIG } from '@/lib/types'
 import DocumentCard from './DocumentCard'
@@ -145,6 +145,56 @@ function TemplateCard({ title, content }: { title: string; content: string }) {
   )
 }
 
+// ── Phase label ──────────────────────────────────────────────────────────────
+function PhaseIndicator({ phase }: { phase?: 'searching' | 'generating' }) {
+  const [dots, setDots] = useState('.')
+  useEffect(() => {
+    const id = setInterval(() => setDots(d => d.length >= 3 ? '.' : d + '.'), 400)
+    return () => clearInterval(id)
+  }, [])
+  const label = phase === 'generating' ? 'جاري الإجابة' : 'جاري البحث في القوانين'
+  return (
+    <span className="text-sm text-warm-muted italic select-none">
+      {label}<span className="tracking-widest">{dots}</span>
+    </span>
+  )
+}
+
+// ── Typewriter hook ───────────────────────────────────────────────────────────
+function useTypewriter(target: string, streaming: boolean): string {
+  const [displayed, setDisplayed] = useState('')
+  const targetRef = useRef(target)
+  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    targetRef.current = target
+    if (!streaming) {
+      // Done streaming — show everything immediately
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+      setDisplayed(target)
+      return
+    }
+    if (target.length === 0) { setDisplayed(''); return }
+    if (!timerRef.current) {
+      timerRef.current = setInterval(() => {
+        setDisplayed(prev => {
+          const t = targetRef.current
+          if (prev.length >= t.length) {
+            clearInterval(timerRef.current!); timerRef.current = null
+            return prev
+          }
+          // Show 4 chars per tick at 16ms ≈ 250 chars/sec — fast but visible
+          return t.slice(0, prev.length + 4)
+        })
+      }, 16)
+    }
+  }, [target, streaming])
+
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
+
+  return streaming ? displayed : target
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function MessageBubble({ message, onFollowUp }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
@@ -205,8 +255,10 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
   }
 
   // ── Assistant — streaming / text answer ──────────────────────────────────
-  const parts = parseContent(message.content || '')
+  const displayed   = useTypewriter(message.content || '', isStreaming)
+  const parts       = parseContent(displayed)
   const hasTemplates = parts.some(p => p.type === 'template')
+  const showPhase   = isStreaming && !message.content
 
   return (
     <div className="flex justify-end animate-slide-up">
@@ -216,12 +268,15 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
             <p className="text-sm text-red-500">{message.content}</p>
           ) : (
             <div className="prose-ar">
-              {isStreaming ? (
+              {showPhase ? (
+                /* No content yet — show animated phase label */
+                <PhaseIndicator phase={message.streamPhase} />
+              ) : isStreaming ? (
                 <>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content || ''}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayed}</ReactMarkdown>
                   <span
                     className="inline-block w-0.5 h-4 bg-burgundy ml-0.5 align-middle"
-                    style={{ animation: 'pulse 1s cubic-bezier(0.4,0,0.6,1) infinite' }}
+                    style={{ animation: 'pulse 0.8s cubic-bezier(0.4,0,0.6,1) infinite' }}
                   />
                 </>
               ) : (

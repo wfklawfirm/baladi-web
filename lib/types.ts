@@ -59,6 +59,8 @@ export interface Message {
   isVoice?: boolean
   // Streaming in-progress flag
   streaming?: boolean
+  // Streaming phase indicator
+  streamPhase?: 'searching' | 'generating'
   // Follow-up question suggestions
   follow_up?: string[]
 }

@@ -60,6 +60,7 @@ export interface StreamChunk {
   chunks_used?: number
   query?: string
   follow_up?: string[]
+  phase?: 'searching' | 'generating'
 }
 
 /**
