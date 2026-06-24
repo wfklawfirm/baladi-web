@@ -3,7 +3,6 @@
 import { Send, Paperclip, Mic, MicOff, X, FileText } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Domain } from '@/lib/types'
-import { DOMAIN_OPTIONS } from '@/lib/types'
 import { transcribeAudio } from '@/lib/api'
 import clsx from 'clsx'
 
@@ -15,7 +14,7 @@ interface Props {
 
 export default function InputBar({ onSend, loading, initialValue = '' }: Props) {
   const [query, setQuery]           = useState(initialValue)
-  const [domain, setDomain]         = useState<Domain>('auto')
+  const domain: Domain = 'auto'
   const [attachedFile, setFile]     = useState<File | null>(null)
   const [recording, setRecording]   = useState(false)
   const [transcribing, setTranscribing] = useState(false)
@@ -130,16 +129,6 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
           onClick={() => textareaRef.current?.focus()}
         >
 
-          {/* Domain selector — hidden on mobile to save space */}
-          <select
-            value={domain}
-            onChange={e => setDomain(e.target.value as Domain)}
-            className="hidden sm:block text-xs text-stone-600 bg-warm-bg border border-warm-border rounded-lg px-2 py-1.5 outline-none cursor-pointer shrink-0 mb-0.5"
-          >
-            {DOMAIN_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
 
           <div className="hidden sm:block w-px h-5 bg-warm-border self-center shrink-0" />
 
