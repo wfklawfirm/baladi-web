@@ -2,9 +2,9 @@
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ChevronDown, ChevronUp, Mic, FileText, Copy, Download, Printer, CheckCircle, FileDown } from 'lucide-react'
+import { ChevronDown, ChevronUp, Mic, FileText, Copy, Download, Printer, CheckCircle, FileDown, FileSignature, ListOrdered, AlertTriangle, BookOpen, Lightbulb } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
-import type { Message } from '@/lib/types'
+import type { Message, FollowUpAction, ActionType } from '@/lib/types'
 import { CONFIDENCE_CONFIG } from '@/lib/types'
 import DocumentCard from './DocumentCard'
 import { loadSettings, applySettings } from '@/lib/settings'
@@ -141,6 +141,90 @@ function TemplateCard({ title, content }: { title: string; content: string }) {
       <pre className="px-5 py-4 text-sm text-stone-700 whitespace-pre-wrap font-sans leading-7 max-h-96 overflow-y-auto bg-white text-right">
         {content}
       </pre>
+    </div>
+  )
+}
+
+// ── Action Cards ─────────────────────────────────────────────────────────────
+const ACTION_STYLES: Record<ActionType, { icon: React.ReactNode; bg: string; border: string; text: string; badge: string }> = {
+  template: {
+    icon: <FileSignature size={15} />,
+    bg: 'bg-burgundy/5 hover:bg-burgundy/10',
+    border: 'border-burgundy/20 hover:border-burgundy/40',
+    text: 'text-burgundy',
+    badge: 'bg-burgundy/10 text-burgundy',
+  },
+  steps: {
+    icon: <ListOrdered size={15} />,
+    bg: 'bg-navy/5 hover:bg-navy/10',
+    border: 'border-navy/20 hover:border-navy/35',
+    text: 'text-navy',
+    badge: 'bg-navy/10 text-navy',
+  },
+  risks: {
+    icon: <AlertTriangle size={15} />,
+    bg: 'bg-amber-50 hover:bg-amber-100',
+    border: 'border-amber-200 hover:border-amber-300',
+    text: 'text-amber-700',
+    badge: 'bg-amber-100 text-amber-700',
+  },
+  law: {
+    icon: <BookOpen size={15} />,
+    bg: 'bg-emerald-50 hover:bg-emerald-100',
+    border: 'border-emerald-200 hover:border-emerald-300',
+    text: 'text-emerald-700',
+    badge: 'bg-emerald-100 text-emerald-700',
+  },
+  example: {
+    icon: <Lightbulb size={15} />,
+    bg: 'bg-purple-50 hover:bg-purple-100',
+    border: 'border-purple-200 hover:border-purple-300',
+    text: 'text-purple-700',
+    badge: 'bg-purple-100 text-purple-700',
+  },
+  question: {
+    icon: <span className="text-sm">↩</span>,
+    bg: 'bg-warm-bg hover:bg-stone-100',
+    border: 'border-warm-border hover:border-stone-300',
+    text: 'text-stone-600',
+    badge: 'bg-stone-100 text-stone-500',
+  },
+}
+
+const ACTION_LABELS: Record<ActionType, string> = {
+  template: 'نموذج',
+  steps:    'خطوات',
+  risks:    'مخاطر',
+  law:      'القانون',
+  example:  'مثال',
+  question: 'متابعة',
+}
+
+function ActionCards({ actions, onAction }: { actions: FollowUpAction[]; onAction: (prompt: string) => void }) {
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      {actions.map((action, i) => {
+        const type   = (action.type as ActionType) in ACTION_STYLES ? action.type as ActionType : 'question'
+        const styles = ACTION_STYLES[type]
+        return (
+          <button
+            key={i}
+            onClick={() => onAction(action.prompt)}
+            className={clsx(
+              'flex items-start gap-2.5 p-3 rounded-xl border text-right transition-all duration-150 group',
+              styles.bg, styles.border
+            )}
+          >
+            <span className={clsx('mt-0.5 shrink-0', styles.text)}>{styles.icon}</span>
+            <div className="flex-1 min-w-0">
+              <span className={clsx('text-[10px] font-semibold px-1.5 py-0.5 rounded-md mb-1 inline-block', styles.badge)}>
+                {ACTION_LABELS[type]}
+              </span>
+              <p className={clsx('text-xs font-medium leading-5', styles.text)}>{action.label}</p>
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -315,19 +399,9 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
           </div>
         )}
 
-        {/* Follow-up chips */}
-        {!isStreaming && !isTyping && message.follow_up && message.follow_up.length > 0 && onFollowUp && (
-          <div className="mt-3 flex flex-col gap-1.5">
-            {message.follow_up.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => onFollowUp(q)}
-                className="text-right text-xs text-navy bg-navy/5 border border-navy/15 hover:bg-navy/10 hover:border-navy/30 rounded-xl px-3 py-2 transition-all leading-5"
-              >
-                ↩ {q}
-              </button>
-            ))}
-          </div>
+        {/* Action Cards */}
+        {!isStreaming && !isTyping && message.actions && message.actions.length > 0 && onFollowUp && (
+          <ActionCards actions={message.actions} onAction={onFollowUp} />
         )}
 
         {/* Sources */}

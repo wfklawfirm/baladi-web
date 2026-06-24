@@ -59,7 +59,7 @@ export interface StreamChunk {
   confidence?: 'high' | 'medium' | 'low'
   chunks_used?: number
   query?: string
-  follow_up?: string[]
+  actions?: { label: string; prompt: string; type: string }[]
   phase?: 'searching' | 'generating'
 }
 

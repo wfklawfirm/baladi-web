@@ -247,7 +247,7 @@ export default function AssistantPage() {
             duration_ms: Date.now() - t0,
             streaming: false,
             streamPhase: undefined,
-            follow_up: chunk.follow_up ?? [],
+            actions: (chunk.actions ?? []) as any,
           })
         }
       }

@@ -42,6 +42,14 @@ export interface DocumentAnalysis {
   duration_ms: number
 }
 
+export type ActionType = 'template' | 'steps' | 'risks' | 'law' | 'example' | 'question'
+
+export interface FollowUpAction {
+  label: string
+  prompt: string
+  type: ActionType
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -54,15 +62,14 @@ export interface Message {
   error?: boolean
   // Document analysis
   analysis?: DocumentAnalysis
-  attachedFile?: string   // filename
+  attachedFile?: string
   // Voice
   isVoice?: boolean
-  // Streaming in-progress flag
+  // Streaming
   streaming?: boolean
-  // Streaming phase indicator
   streamPhase?: 'searching' | 'generating'
-  // Follow-up question suggestions
-  follow_up?: string[]
+  // Action suggestions (replaces follow_up)
+  actions?: FollowUpAction[]
 }
 
 export interface Conversation {
