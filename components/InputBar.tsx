@@ -125,7 +125,10 @@ export default function InputBar({ onSend, loading, initialValue = '' }: Props) 
           </div>
         )}
 
-        <div className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-3 py-3 shadow-sm focus-within:border-burgundy/60 focus-within:ring-1 focus-within:ring-burgundy/20 transition-all">
+        <div
+          className="flex items-end gap-2 bg-white border border-warm-border rounded-2xl px-3 py-3 shadow-sm focus-within:border-burgundy/60 focus-within:ring-1 focus-within:ring-burgundy/20 transition-all cursor-text"
+          onClick={() => textareaRef.current?.focus()}
+        >
 
           {/* Domain selector — hidden on mobile to save space */}
           <select
