@@ -159,6 +159,23 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
 
 export interface ClarifyOption { label: string; prompt: string }
 
+export async function apiClarifyDoc(
+  file: File,
+  query?: string,
+): Promise<{ doc_summary: string; options: ClarifyOption[] }> {
+  const form = new FormData()
+  form.append('file', file)
+  if (query) form.append('query', query)
+  const res = await fetch(`${API_URL}/api/clarify-doc`, {
+    method: 'POST',
+    headers: { ...authHeader() },
+    body: form,
+  })
+  if (!res.ok) return { doc_summary: '', options: [] }
+  const data = await res.json().catch(() => ({ doc_summary: '', options: [] }))
+  return { doc_summary: data.doc_summary ?? '', options: data.options ?? [] }
+}
+
 export async function apiClarify(query: string): Promise<ClarifyOption[]> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('baladi_token') : null
   const res = await fetch(`${API_URL}/api/clarify`, {

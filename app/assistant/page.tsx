@@ -8,7 +8,7 @@ import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
 import InputBar from '@/components/InputBar'
 import SettingsModal from '@/components/SettingsModal'
-import { askStream, analyzeDocument, apiClarify } from '@/lib/api'
+import { askStream, analyzeDocument, apiClarify, apiClarifyDoc } from '@/lib/api'
 import type { HistoryMessage } from '@/lib/api'
 import type { Message, Conversation, Domain } from '@/lib/types'
 import { loadSettings } from '@/lib/settings'
@@ -114,7 +114,8 @@ export default function AssistantPage() {
   const [prefill, setPrefill]             = useState('')
   const [settingsOpen, setSettingsOpen]   = useState(false)
   const [daysLeft, setDaysLeft]           = useState(0)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const bottomRef       = useRef<HTMLDivElement>(null)
+  const pendingFileRef  = useRef<File | null>(null)
 
   // Auth guard
   useEffect(() => {
@@ -180,18 +181,47 @@ export default function AssistantPage() {
     if (activeId === id) setActiveId(null)
   }, [activeId])
 
-  // Called when user picks a clarification option — skip clarify step
+  // Called when user picks a clarification option (text query OR document/image)
   const handleClarifiedAsk = useCallback(async (prompt: string, domain: Domain) => {
     if (loading || streaming) return
     const convId = activeId
     if (!convId) return
-    // Remove the clarification message and proceed directly to answer
+
+    // Remove the clarification bubble
     setConversations(prev => prev.map(c => c.id !== convId ? c : {
       ...c, messages: c.messages.filter(m => !m.clarifyOptions && !m.clarifyLoading),
     }))
+
     // Add user selection as a user message
     const selMsg: Message = { id: uid(), role: 'user', content: prompt, timestamp: new Date() }
     appendMessage(convId, selMsg)
+
+    // ── Document / image path ─────────────────────────────────────────────────
+    const file = pendingFileRef.current
+    if (file) {
+      pendingFileRef.current = null
+      setLoading(true)
+      try {
+        const analysis = await analyzeDocument(file, prompt)
+        appendMessage(convId, {
+          id: uid(), role: 'assistant', content: '',
+          analysis, confidence: analysis.confidence,
+          duration_ms: analysis.duration_ms, sources: analysis.sources,
+          timestamp: new Date(),
+        })
+      } catch (err) {
+        appendMessage(convId, {
+          id: uid(), role: 'assistant',
+          content: `حدث خطأ في التحليل: ${err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم'}`,
+          timestamp: new Date(), error: true,
+        })
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    // ── Text streaming path ───────────────────────────────────────────────────
     await streamAnswer(convId, prompt, domain, conversations.find(c => c.id === convId)?.messages ?? [])
   }, [loading, streaming, activeId, conversations])  // eslint-disable-line
 
@@ -221,13 +251,40 @@ export default function AssistantPage() {
     try {
       if (file) {
         setLoading(true)
-        const analysis = await analyzeDocument(file, query || undefined)
+        pendingFileRef.current = file
+
+        // Show clarify loading bubble, then offer intent options
+        const clarifyMsgId = uid()
         appendMessage(convId, {
-          id: uid(), role: 'assistant', content: '',
-          analysis, confidence: analysis.confidence,
-          duration_ms: analysis.duration_ms, sources: analysis.sources,
-          timestamp: new Date(),
+          id: clarifyMsgId, role: 'assistant', content: '',
+          timestamp: new Date(), clarifyLoading: true,
         })
+        const result = await apiClarifyDoc(file, query || undefined)
+        if (result.options.length > 0) {
+          patchMessage(convId, clarifyMsgId, {
+            clarifyLoading: false,
+            clarifyOptions: result.options,
+            clarifyDocSummary: result.doc_summary || undefined,
+          })
+          return  // wait for user to pick an intent
+        }
+
+        // No options — remove bubble and go directly to full analysis
+        setConversations(prev => prev.map(c => c.id !== convId ? c : {
+          ...c, messages: c.messages.filter(m => m.id !== clarifyMsgId),
+        }))
+        pendingFileRef.current = null
+        try {
+          const analysis = await analyzeDocument(file, query || undefined)
+          appendMessage(convId, {
+            id: uid(), role: 'assistant', content: '',
+            analysis, confidence: analysis.confidence,
+            duration_ms: analysis.duration_ms, sources: analysis.sources,
+            timestamp: new Date(),
+          })
+        } finally {
+          setLoading(false)
+        }
         return
       }
 

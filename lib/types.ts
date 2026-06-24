@@ -73,6 +73,7 @@ export interface Message {
   // Clarification options (shown before answering)
   clarifyOptions?: { label: string; prompt: string }[]
   clarifyLoading?: boolean
+  clarifyDocSummary?: string
 }
 
 export interface Conversation {

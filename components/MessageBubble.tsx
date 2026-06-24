@@ -275,10 +275,12 @@ function useTypewriter(fullContent: string, isStreaming: boolean): string {
 function ClarificationBubble({
   loading,
   options,
+  docSummary,
   onPick,
 }: {
   loading?: boolean
   options?: { label: string; prompt: string }[]
+  docSummary?: string
   onPick?: (prompt: string) => void
 }) {
   if (loading) {
@@ -299,6 +301,12 @@ function ClarificationBubble({
     <div className="flex justify-end animate-slide-up">
       <div className="max-w-[85%] w-full">
         <div className="bg-white border border-warm-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+          {docSummary && (
+            <div className="mb-3 pb-3 border-b border-warm-border">
+              <p className="text-[11px] text-warm-muted font-semibold uppercase tracking-wide mb-1">ما قرأته في الوثيقة</p>
+              <p className="text-sm text-stone-600 leading-6">{docSummary}</p>
+            </div>
+          )}
           <p className="text-xs text-warm-muted mb-3 font-medium">حدد ما تريده بالضبط:</p>
           <div className="flex flex-col gap-2">
             {options.map((opt, i) => (
@@ -357,6 +365,7 @@ export default function MessageBubble({ message, onFollowUp, onClarify }: Props)
       <ClarificationBubble
         loading={message.clarifyLoading}
         options={message.clarifyOptions}
+        docSummary={message.clarifyDocSummary}
         onPick={onClarify}
       />
     )
