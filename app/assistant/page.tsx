@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Menu, Settings, FileDown } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Menu, Settings, FileDown, LogOut, Clock } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
 import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
@@ -11,6 +12,7 @@ import { askStream, analyzeDocument } from '@/lib/api'
 import type { HistoryMessage } from '@/lib/api'
 import type { Message, Conversation, Domain } from '@/lib/types'
 import { loadSettings } from '@/lib/settings'
+import { isLoggedIn, getUser, clearAuth, getDaysRemaining } from '@/lib/auth'
 
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2)
@@ -103,6 +105,7 @@ ${rows}
 }
 
 export default function AssistantPage() {
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen]   = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeId, setActiveId]           = useState<string | null>(null)
@@ -110,9 +113,20 @@ export default function AssistantPage() {
   const [streaming, setStreaming]         = useState(false)
   const [prefill, setPrefill]             = useState('')
   const [settingsOpen, setSettingsOpen]   = useState(false)
+  const [daysLeft, setDaysLeft]           = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setConversations(loadConversations()) }, [])
+  // Auth guard
+  useEffect(() => {
+    if (!isLoggedIn()) { router.replace('/login'); return }
+    setDaysLeft(getDaysRemaining())
+    setConversations(loadConversations())
+  }, [router])
+
+  function handleLogout() {
+    clearAuth()
+    router.replace('/login')
+  }
 
   // Wake up Render free-tier server early to eliminate cold-start delay
   useEffect(() => {
@@ -261,6 +275,15 @@ export default function AssistantPage() {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden relative transition-all duration-300">
+        {/* Trial warning banner */}
+        {daysLeft <= 1 && daysLeft >= 0 && (
+          <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs text-center py-1.5 px-4">
+            {daysLeft === 0
+              ? 'انتهت فترتك التجريبية — تواصل مع الإدارة لتجديد الاشتراك'
+              : 'يوم واحد متبقٍّ في فترتك التجريبية — تواصل مع الإدارة لتجديد الاشتراك'}
+          </div>
+        )}
+
         <header className="flex items-center gap-2 px-4 py-3 border-b border-warm-border bg-white/90 backdrop-blur-sm">
           {!sidebarOpen && (
             <button
@@ -271,6 +294,14 @@ export default function AssistantPage() {
             </button>
           )}
           <div className="flex-1" />
+
+          {/* Days remaining */}
+          {daysLeft > 0 && (
+            <span className="flex items-center gap-1 text-xs text-warm-muted">
+              <Clock size={12} />
+              {daysLeft} {daysLeft === 1 ? 'يوم' : 'أيام'}
+            </span>
+          )}
 
           {/* Export conversation */}
           {activeConv && activeConv.messages.length > 0 && (
@@ -291,6 +322,15 @@ export default function AssistantPage() {
             className="p-1.5 rounded-lg hover:bg-warm-border text-warm-muted hover:text-stone-700 transition-colors"
           >
             <Settings size={16} />
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            title="تسجيل الخروج"
+            className="p-1.5 rounded-lg hover:bg-warm-border text-warm-muted hover:text-red-600 transition-colors"
+          >
+            <LogOut size={16} />
           </button>
 
           {activeConv && (

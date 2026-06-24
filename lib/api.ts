@@ -2,6 +2,34 @@ import type { Domain, Source, DocumentAnalysis } from './types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+function authHeader(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('baladi_token') : null
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+export interface AuthPayload { username: string; password: string; municipality?: string; phone?: string; email?: string }
+export interface AuthResult  { token: string; username: string; municipality: string; expires_at: string; days_remaining: number }
+
+export async function apiRegister(p: AuthPayload): Promise<AuthResult> {
+  const res = await fetch(`${API_URL}/api/auth/register`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(p),
+  })
+  const data = await res.json().catch(() => ({ detail: res.statusText }))
+  if (!res.ok) throw new Error(data.detail ?? 'Registration error')
+  return data
+}
+
+export async function apiLogin(p: { username: string; password: string }): Promise<AuthResult> {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(p),
+  })
+  const data = await res.json().catch(() => ({ detail: res.statusText }))
+  if (!res.ok) throw new Error(data.detail ?? 'Login error')
+  return data
+}
+
 export interface HistoryMessage {
   role: 'user' | 'assistant'
   content: string
@@ -40,7 +68,7 @@ export interface StreamChunk {
 export async function* askStream(payload: AskPayload): AsyncGenerator<StreamChunk> {
   const res = await fetch(`${API_URL}/api/ask/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({
       query:   payload.query,
       top_k:   payload.top_k ?? 10,
@@ -76,7 +104,7 @@ export async function* askStream(payload: AskPayload): AsyncGenerator<StreamChun
 export async function ask(payload: AskPayload): Promise<AskResult> {
   const res = await fetch(`${API_URL}/api/ask`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({
       query:   payload.query,
       top_k:   payload.top_k ?? 10,
@@ -101,6 +129,7 @@ export async function analyzeDocument(
 
   const res = await fetch(`${API_URL}/api/analyze`, {
     method: 'POST',
+    headers: { ...authHeader() },
     body: form,
   })
   if (!res.ok) {
@@ -116,6 +145,7 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
 
   const res = await fetch(`${API_URL}/api/transcribe`, {
     method: 'POST',
+    headers: { ...authHeader() },
     body: form,
   })
   if (!res.ok) {

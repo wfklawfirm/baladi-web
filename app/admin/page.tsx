@@ -4,14 +4,24 @@ import { useState, useRef } from 'react'
 import {
   Lock, Plus, Upload, List, Trash2, CheckCircle,
   XCircle, Loader2, FileText, ChevronDown, LogOut,
-  Database, AlertTriangle, Eye, EyeOff,
+  Database, AlertTriangle, Eye, EyeOff, Users, RefreshCw,
 } from 'lucide-react'
 import { DOMAIN_OPTIONS } from '@/lib/types'
 import clsx from 'clsx'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://baladi-api-n1tg.onrender.com'
 
-type Tab = 'add-text' | 'upload-doc' | 'chunks'
+type Tab = 'add-text' | 'upload-doc' | 'chunks' | 'users'
+
+interface UserRecord {
+  username: string
+  municipality: string
+  phone: string
+  email?: string
+  created_at: string
+  expires_at: string
+  last_login?: string
+}
 
 interface Chunk {
   chunk_id: string
@@ -66,6 +76,11 @@ export default function AdminPage() {
   // Chunks list
   const [chunks, setChunks]       = useState<Chunk[]>([])
   const [chunksLoaded, setChunksLoaded] = useState(false)
+
+  // Users list
+  const [users, setUsers]         = useState<UserRecord[]>([])
+  const [usersLoaded, setUsersLoaded] = useState(false)
+  const [extendDays, setExtendDays] = useState<Record<string, number>>({})
 
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok })
@@ -142,6 +157,45 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // ── Load users ────────────────────────────────────────────────────────────
+  async function loadUsers() {
+    setLoading(true)
+    try {
+      const res = await adminFetch('/api/admin/users', secret)
+      setUsers(res.users)
+      setUsersLoaded(true)
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'خطأ في تحميل المستخدمين', false)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Extend trial ──────────────────────────────────────────────────────────
+  async function handleExtend(username: string) {
+    const days = extendDays[username] ?? 7
+    try {
+      await adminFetch(`/api/admin/users/${username}/extend`, secret, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days }),
+      })
+      showToast(`✅ تم تمديد اشتراك ${username} بـ ${days} أيام`, true)
+      loadUsers()
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'خطأ في التمديد', false)
+    }
+  }
+
+  function userStatus(expires_at: string): { label: string; cls: string } {
+    const exp = new Date(expires_at)
+    const now = new Date()
+    const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / 86400000)
+    if (daysLeft < 0) return { label: 'منتهٍ', cls: 'bg-red-100 text-red-700' }
+    if (daysLeft <= 1) return { label: `${daysLeft} يوم`, cls: 'bg-amber-100 text-amber-700' }
+    return { label: `${daysLeft} أيام`, cls: 'bg-emerald-100 text-emerald-700' }
   }
 
   // ── Delete chunk ───────────────────────────────────────────────────────────
@@ -242,17 +296,22 @@ export default function AdminPage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-white border border-warm-border rounded-xl p-1 mb-6">
+        <div className="flex gap-1 bg-white border border-warm-border rounded-xl p-1 mb-6 flex-wrap">
           {([
             { id: 'add-text', icon: <Plus size={14}/>, label: 'إضافة نص' },
             { id: 'upload-doc', icon: <Upload size={14}/>, label: 'رفع ملف' },
-            { id: 'chunks', icon: <List size={14}/>, label: 'المقاطع المضافة' },
+            { id: 'chunks', icon: <List size={14}/>, label: 'المقاطع' },
+            { id: 'users', icon: <Users size={14}/>, label: 'المستخدمون' },
           ] as { id: Tab; icon: React.ReactNode; label: string }[]).map(t => (
             <button
               key={t.id}
-              onClick={() => { setTab(t.id); if (t.id === 'chunks' && !chunksLoaded) loadChunks() }}
+              onClick={() => {
+                setTab(t.id)
+                if (t.id === 'chunks' && !chunksLoaded) loadChunks()
+                if (t.id === 'users' && !usersLoaded) loadUsers()
+              }}
               className={clsx(
-                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all',
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px]',
                 tab === t.id
                   ? 'bg-burgundy text-white'
                   : 'text-stone-600 hover:bg-warm-bg'
@@ -456,6 +515,80 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        {/* ── Tab: Users ── */}
+        {tab === 'users' && (
+          <div className="bg-white rounded-2xl border border-warm-border overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-warm-border">
+              <div className="flex items-center gap-2">
+                <Users size={15} className="text-burgundy" />
+                <span className="text-sm font-semibold text-stone-800">المستخدمون المسجّلون</span>
+                <span className="text-xs bg-burgundy/10 text-burgundy px-2 py-0.5 rounded-full">{users.length}</span>
+              </div>
+              <button
+                onClick={loadUsers}
+                disabled={loading}
+                className="text-xs text-warm-muted hover:text-stone-600 flex items-center gap-1 transition-colors"
+              >
+                {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                تحديث
+              </button>
+            </div>
+
+            {loading && !usersLoaded ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={24} className="text-burgundy animate-spin" />
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-12 text-warm-muted text-sm">لا يوجد مستخدمون بعد</div>
+            ) : (
+              <div className="divide-y divide-warm-border">
+                {users.map(u => {
+                  const status = userStatus(u.expires_at)
+                  const created = new Date(u.created_at).toLocaleDateString('ar-LB')
+                  const expires = new Date(u.expires_at).toLocaleDateString('ar-LB')
+                  return (
+                    <div key={u.username} className="px-5 py-4 hover:bg-warm-bg transition-colors">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-sm font-semibold text-stone-800 font-mono">{u.username}</span>
+                            <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', status.cls)}>
+                              {status.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-600 mb-0.5">🏛 {u.municipality}</p>
+                          <p className="text-xs text-stone-500">📞 {u.phone}{u.email ? ` · ✉ ${u.email}` : ''}</p>
+                          <p className="text-[10px] text-warm-muted mt-1">
+                            تسجيل: {created} · انتهاء: {expires}
+                            {u.last_login ? ` · آخر دخول: ${new Date(u.last_login).toLocaleDateString('ar-LB')}` : ''}
+                          </p>
+                        </div>
+
+                        {/* Extend trial */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <select
+                            value={extendDays[u.username] ?? 7}
+                            onChange={e => setExtendDays(prev => ({ ...prev, [u.username]: +e.target.value }))}
+                            className="text-xs bg-warm-bg border border-warm-border rounded-lg px-2 py-1.5 outline-none"
+                          >
+                            {[3,7,14,30,60,90].map(d => <option key={d} value={d}>{d} أيام</option>)}
+                          </select>
+                          <button
+                            onClick={() => handleExtend(u.username)}
+                            className="text-xs bg-navy/10 text-navy hover:bg-navy/20 px-3 py-1.5 rounded-lg font-medium transition-colors"
+                          >
+                            تمديد
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )
