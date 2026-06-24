@@ -41,13 +41,13 @@ export default function LandingView({ onAsk }: Props) {
   return (
     <div className="flex flex-col items-center justify-center min-h-full px-4 py-6 animate-fade-in transition-all duration-300">
       {/* Logo */}
-      <div className="mb-4">
+      <div className="mb-5">
         <Image
           src="/logo.png"
           alt="Baladi AI"
-          width={120}
-          height={120}
-          className="object-contain drop-shadow-sm w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40"
+          width={200}
+          height={200}
+          className="object-contain drop-shadow-md w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52"
           priority
         />
       </div>

@@ -140,6 +140,45 @@ export async function analyzeDocument(
   return res.json()
 }
 
+/**
+ * Stream document/image analysis as markdown text — same SSE protocol as askStream.
+ * Returns first token in ~1s instead of waiting 5-8s for full JSON.
+ */
+export async function* analyzeDocumentStream(file: File, query?: string): AsyncGenerator<StreamChunk> {
+  const form = new FormData()
+  form.append('file', file)
+  if (query) form.append('query', query)
+
+  const res = await fetch(`${API_URL}/api/analyze/stream`, {
+    method: 'POST',
+    headers: { ...authHeader() },
+    body: form,
+  })
+
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(err.detail ?? 'Analysis stream error')
+  }
+
+  const reader  = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer    = ''
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const raw = line.slice(6).trim()
+      if (!raw) continue
+      try { yield JSON.parse(raw) as StreamChunk } catch { /* ignore */ }
+    }
+  }
+}
+
 export async function transcribeAudio(blob: Blob): Promise<string> {
   const form = new FormData()
   form.append('audio', blob, 'recording.webm')

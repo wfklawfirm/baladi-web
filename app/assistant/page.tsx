@@ -8,7 +8,7 @@ import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
 import InputBar from '@/components/InputBar'
 import SettingsModal from '@/components/SettingsModal'
-import { askStream, analyzeDocument, apiClarify, apiClarifyDoc } from '@/lib/api'
+import { askStream, analyzeDocumentStream, apiClarify, apiClarifyDoc } from '@/lib/api'
 import type { HistoryMessage } from '@/lib/api'
 import type { Message, Conversation, Domain } from '@/lib/types'
 import { loadSettings } from '@/lib/settings'
@@ -201,23 +201,7 @@ export default function AssistantPage() {
     if (file) {
       pendingFileRef.current = null
       setLoading(true)
-      try {
-        const analysis = await analyzeDocument(file, prompt)
-        appendMessage(convId, {
-          id: uid(), role: 'assistant', content: '',
-          analysis, confidence: analysis.confidence,
-          duration_ms: analysis.duration_ms, sources: analysis.sources,
-          timestamp: new Date(),
-        })
-      } catch (err) {
-        appendMessage(convId, {
-          id: uid(), role: 'assistant',
-          content: `حدث خطأ في التحليل: ${err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم'}`,
-          timestamp: new Date(), error: true,
-        })
-      } finally {
-        setLoading(false)
-      }
+      await streamFileAnswer(convId, file, prompt)
       return
     }
 
@@ -269,22 +253,12 @@ export default function AssistantPage() {
           return  // wait for user to pick an intent
         }
 
-        // No options — remove bubble and go directly to full analysis
+        // No options — remove bubble and go directly to streaming analysis
         setConversations(prev => prev.map(c => c.id !== convId ? c : {
           ...c, messages: c.messages.filter(m => m.id !== clarifyMsgId),
         }))
         pendingFileRef.current = null
-        try {
-          const analysis = await analyzeDocument(file, query || undefined)
-          appendMessage(convId, {
-            id: uid(), role: 'assistant', content: '',
-            analysis, confidence: analysis.confidence,
-            duration_ms: analysis.duration_ms, sources: analysis.sources,
-            timestamp: new Date(),
-          })
-        } finally {
-          setLoading(false)
-        }
+        await streamFileAnswer(convId, file, query || '')
         return
       }
 
@@ -323,6 +297,46 @@ export default function AssistantPage() {
       setStreaming(false)
     }
   }, [activeId, loading, streaming, conversations]) // eslint-disable-line
+
+  // ── Stream document/image analysis (same UX as text answers) ────────────────
+  const streamFileAnswer = useCallback(async (convId: string, file: File, query: string) => {
+    setStreaming(true)
+    const assistantId = uid()
+    const t0 = Date.now()
+
+    appendMessage(convId, {
+      id: assistantId, role: 'assistant',
+      content: '', timestamp: new Date(), streaming: true, streamPhase: 'searching',
+    })
+
+    try {
+      let fullContent = ''
+      for await (const chunk of analyzeDocumentStream(file, query || undefined)) {
+        if (chunk.error) throw new Error(chunk.error)
+        if (chunk.phase) patchMessage(convId, assistantId, { streamPhase: chunk.phase })
+        if (chunk.delta) {
+          fullContent += chunk.delta
+          patchMessage(convId, assistantId, { content: fullContent, streamPhase: 'generating' })
+        }
+        if (chunk.done) {
+          patchMessage(convId, assistantId, {
+            content: fullContent, sources: chunk.sources ?? [],
+            confidence: chunk.confidence, chunks_used: chunk.chunks_used,
+            duration_ms: Date.now() - t0, streaming: false, streamPhase: undefined,
+            actions: (chunk.actions ?? []) as any,
+          })
+        }
+      }
+    } catch (err) {
+      patchMessage(convId, assistantId, {
+        content: `حدث خطأ في التحليل: ${err instanceof Error ? err.message : 'تعذّر الاتصال بالخادم'}`,
+        streaming: false, error: true,
+      })
+    } finally {
+      setLoading(false)
+      setStreaming(false)
+    }
+  }, []) // eslint-disable-line
 
   const streamAnswer = useCallback(async (convId: string, query: string, domain: Domain, allMsgs: Message[]) => {
     setStreaming(true)
