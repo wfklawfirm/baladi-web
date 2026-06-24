@@ -12,34 +12,10 @@ const STATS = [
 ]
 
 const FEATURES = [
-  {
-    icon: '⚖️',
-    accent: '#8A0F24',
-    bg: 'bg-[#FDF4F5] border-[#EDD0D4]',
-    title: 'قانون البلديات',
-    desc: 'المرسوم 118/1977 والتعديلاته — مُفهرَس مادةً مادةً',
-  },
-  {
-    icon: '📋',
-    accent: '#1B2F4E',
-    bg: 'bg-[#F3F7FD] border-[#CCDAF0]',
-    title: 'الإجراءات الإدارية',
-    desc: 'تراخيص، مناقصات، موازنة، تعيينات — خطوة بخطوة',
-  },
-  {
-    icon: '🏛️',
-    accent: '#92580A',
-    bg: 'bg-amber-50 border-amber-200',
-    title: 'الرقابة والحوكمة',
-    desc: 'صلاحيات القائمقام والوصاية الإدارية والمحاسبة',
-  },
-  {
-    icon: '📄',
-    accent: '#065F46',
-    bg: 'bg-emerald-50 border-emerald-200',
-    title: 'نماذج رسمية',
-    desc: 'أكثر من ١١٠ نموذج جاهز: قرارات، عقود، محاضر',
-  },
+  { icon: '⚖️',  title: 'قانون البلديات',     desc: 'مواد قانونية مُفهرَسة وسهلة البحث' },
+  { icon: '📋',  title: 'الإجراءات الإدارية', desc: 'دليل عملي لكل معاملة ومهمة'        },
+  { icon: '🏛️', title: 'الرقابة والحوكمة',  desc: 'صلاحيات ومسؤوليات واضحة'           },
+  { icon: '📄',  title: 'نماذج رسمية',        desc: 'وثائق جاهزة للاستخدام الفوري'      },
 ]
 
 const EXAMPLES = [
@@ -136,17 +112,14 @@ export default function LandingView({ onAsk }: Props) {
           {FEATURES.map(f => (
             <div
               key={f.title}
-              className={`flex flex-col gap-2.5 rounded-2xl border p-4 transition-all duration-200 hover:shadow-md ${f.bg}`}
+              className="flex flex-col gap-3 rounded-2xl border border-[#E6EBF2] bg-[#F8FAFC] p-4 transition-all duration-200 hover:shadow-sm hover:border-[#D0DAE8] hover:bg-white"
             >
               <span className="text-[26px] leading-none">{f.icon}</span>
               <div>
-                <p
-                  className="text-[13.5px] font-bold mb-1 leading-snug"
-                  style={{ color: f.accent }}
-                >
+                <p className="text-[13.5px] font-bold mb-1 leading-snug text-[#1B2F4E]">
                   {f.title}
                 </p>
-                <p className="text-[11px] sm:text-[11.5px] text-[#6B7280] leading-[1.55]">
+                <p className="text-[11px] sm:text-[11.5px] text-[#8896A8] leading-[1.55]">
                   {f.desc}
                 </p>
               </div>
