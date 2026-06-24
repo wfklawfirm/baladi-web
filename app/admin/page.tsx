@@ -5,13 +5,27 @@ import {
   Lock, Plus, Upload, List, Trash2, CheckCircle,
   XCircle, Loader2, FileText, ChevronDown, LogOut,
   Database, AlertTriangle, Eye, EyeOff, Users, RefreshCw,
+  BarChart2, TrendingUp, Clock, MessageSquare, Activity,
 } from 'lucide-react'
 import { DOMAIN_OPTIONS } from '@/lib/types'
 import clsx from 'clsx'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://baladi-api-n1tg.onrender.com'
 
-type Tab = 'add-text' | 'upload-doc' | 'chunks' | 'users'
+type Tab = 'add-text' | 'upload-doc' | 'chunks' | 'users' | 'analytics'
+
+interface AnalyticsData {
+  total_queries: number
+  unique_users: number
+  avg_response_ms: number
+  top_domain: string | null
+  top_questions: { query: string; count: number }[]
+  per_user: { username: string; count: number; last: string; municipality: string }[]
+  domain_dist: { domain: string; count: number; pct: number }[]
+  confidence_dist: { confidence: string; count: number }[]
+  query_type_dist: { type: string; count: number }[]
+  daily_counts: { date: string; count: number }[]
+}
 
 interface UserRecord {
   username: string
@@ -81,6 +95,11 @@ export default function AdminPage() {
   const [users, setUsers]         = useState<UserRecord[]>([])
   const [usersLoaded, setUsersLoaded] = useState(false)
   const [extendDays, setExtendDays] = useState<Record<string, number>>({})
+
+  // Analytics
+  const [analytics, setAnalytics]       = useState<AnalyticsData | null>(null)
+  const [analyticsLoaded, setAnalyticsLoaded] = useState(false)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok })
@@ -170,6 +189,20 @@ export default function AdminPage() {
       showToast(err instanceof Error ? err.message : 'خطأ في تحميل المستخدمين', false)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ── Load analytics ────────────────────────────────────────────────────────
+  async function loadAnalytics() {
+    setAnalyticsLoading(true)
+    try {
+      const res = await adminFetch('/api/admin/analytics', secret)
+      setAnalytics(res)
+      setAnalyticsLoaded(true)
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'خطأ في تحميل التحليلات', false)
+    } finally {
+      setAnalyticsLoading(false)
     }
   }
 
@@ -302,6 +335,7 @@ export default function AdminPage() {
             { id: 'upload-doc', icon: <Upload size={14}/>, label: 'رفع ملف' },
             { id: 'chunks', icon: <List size={14}/>, label: 'المقاطع' },
             { id: 'users', icon: <Users size={14}/>, label: 'المستخدمون' },
+            { id: 'analytics', icon: <BarChart2 size={14}/>, label: 'التحليلات' },
           ] as { id: Tab; icon: React.ReactNode; label: string }[]).map(t => (
             <button
               key={t.id}
@@ -309,6 +343,7 @@ export default function AdminPage() {
                 setTab(t.id)
                 if (t.id === 'chunks' && !chunksLoaded) loadChunks()
                 if (t.id === 'users' && !usersLoaded) loadUsers()
+                if (t.id === 'analytics' && !analyticsLoaded) loadAnalytics()
               }}
               className={clsx(
                 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px]',
@@ -585,6 +620,213 @@ export default function AdminPage() {
                   )
                 })}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Analytics ── */}
+        {tab === 'analytics' && (
+          <div className="space-y-5">
+            {/* Refresh button */}
+            <div className="flex justify-end">
+              <button
+                onClick={loadAnalytics}
+                disabled={analyticsLoading}
+                className="flex items-center gap-1.5 text-xs text-warm-muted hover:text-stone-600 transition-colors"
+              >
+                {analyticsLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                تحديث البيانات
+              </button>
+            </div>
+
+            {analyticsLoading && !analyticsLoaded ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 size={28} className="text-burgundy animate-spin" />
+              </div>
+            ) : !analytics ? (
+              <div className="text-center py-12 text-warm-muted text-sm">لا توجد بيانات بعد</div>
+            ) : (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { icon: <MessageSquare size={16} className="text-burgundy" />, value: analytics.total_queries.toLocaleString('ar-EG'), label: 'إجمالي الاستفسارات' },
+                    { icon: <Users size={16} className="text-navy" />, value: analytics.unique_users.toString(), label: 'مستخدمون نشطون' },
+                    { icon: <Clock size={16} className="text-amber-600" />, value: `${(analytics.avg_response_ms / 1000).toFixed(1)}ث`, label: 'متوسط وقت الاستجابة' },
+                    { icon: <TrendingUp size={16} className="text-emerald-600" />, value: analytics.top_domain ?? '—', label: 'أكثر مجال استخداماً' },
+                  ].map((card, i) => (
+                    <div key={i} className="bg-white border border-warm-border rounded-2xl p-4 flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        {card.icon}
+                        <span className="text-xs text-warm-muted">{card.label}</span>
+                      </div>
+                      <p className="text-xl font-bold text-stone-800 leading-none">{card.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Daily activity chart */}
+                <div className="bg-white border border-warm-border rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity size={15} className="text-burgundy" />
+                    <span className="text-sm font-semibold text-stone-800">النشاط اليومي — آخر 14 يوماً</span>
+                  </div>
+                  {(() => {
+                    const maxCount = Math.max(...analytics.daily_counts.map(d => d.count), 1)
+                    return (
+                      <div className="flex items-end gap-1 h-20">
+                        {analytics.daily_counts.map(d => (
+                          <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group relative">
+                            <div
+                              className="w-full rounded-t bg-burgundy/70 group-hover:bg-burgundy transition-colors"
+                              style={{ height: `${Math.max(4, (d.count / maxCount) * 72)}px` }}
+                            />
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col items-center z-10">
+                              <div className="bg-stone-800 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap">
+                                {d.count} • {d.date.slice(5)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[9px] text-warm-muted">{analytics.daily_counts[0]?.date.slice(5)}</span>
+                    <span className="text-[9px] text-warm-muted">{analytics.daily_counts[analytics.daily_counts.length - 1]?.date.slice(5)}</span>
+                  </div>
+                </div>
+
+                {/* Top questions */}
+                <div className="bg-white border border-warm-border rounded-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-4 border-b border-warm-border">
+                    <MessageSquare size={15} className="text-burgundy" />
+                    <span className="text-sm font-semibold text-stone-800">الأسئلة الأكثر تكراراً</span>
+                  </div>
+                  {analytics.top_questions.length === 0 ? (
+                    <p className="text-sm text-warm-muted text-center py-8">لا توجد بيانات بعد</p>
+                  ) : (
+                    <div className="divide-y divide-warm-border">
+                      {analytics.top_questions.map((q, i) => {
+                        const maxQ = analytics.top_questions[0]?.count || 1
+                        return (
+                          <div key={i} className="px-5 py-3">
+                            <div className="flex items-center justify-between gap-3 mb-1.5">
+                              <p className="text-sm text-stone-700 leading-5 flex-1 text-right">{q.query}</p>
+                              <span className="shrink-0 text-xs font-bold text-burgundy bg-burgundy/10 rounded-full px-2 py-0.5">
+                                ×{q.count}
+                              </span>
+                            </div>
+                            <div className="w-full bg-warm-bg rounded-full h-1.5">
+                              <div
+                                className="bg-burgundy/60 h-1.5 rounded-full transition-all"
+                                style={{ width: `${(q.count / maxQ) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Two-column: Domain dist + Confidence dist */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Domain distribution */}
+                  <div className="bg-white border border-warm-border rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-warm-border">
+                      <span className="text-sm font-semibold text-stone-800">توزيع المجالات</span>
+                    </div>
+                    <div className="p-4 space-y-2.5">
+                      {analytics.domain_dist.slice(0, 8).map((d, i) => (
+                        <div key={i}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-stone-600 font-mono">{d.domain}</span>
+                            <span className="text-warm-muted">{d.count} ({d.pct}%)</span>
+                          </div>
+                          <div className="w-full bg-warm-bg rounded-full h-1.5">
+                            <div
+                              className="bg-navy/50 h-1.5 rounded-full"
+                              style={{ width: `${d.pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Confidence + type dist */}
+                  <div className="space-y-4">
+                    <div className="bg-white border border-warm-border rounded-2xl overflow-hidden">
+                      <div className="px-4 py-3 border-b border-warm-border">
+                        <span className="text-sm font-semibold text-stone-800">مستوى الثقة</span>
+                      </div>
+                      <div className="p-4 space-y-2.5">
+                        {analytics.confidence_dist.map((c, i) => {
+                          const total = analytics.confidence_dist.reduce((s, x) => s + x.count, 0) || 1
+                          const pct = Math.round((c.count / total) * 100)
+                          const color = c.confidence === 'high' ? 'bg-emerald-400' : c.confidence === 'medium' ? 'bg-amber-400' : 'bg-red-400'
+                          const label = c.confidence === 'high' ? 'عالية' : c.confidence === 'medium' ? 'متوسطة' : 'منخفضة'
+                          return (
+                            <div key={i}>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-stone-600">{label}</span>
+                                <span className="text-warm-muted">{c.count} ({pct}%)</span>
+                              </div>
+                              <div className="w-full bg-warm-bg rounded-full h-1.5">
+                                <div className={`${color} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-warm-border rounded-2xl overflow-hidden">
+                      <div className="px-4 py-3 border-b border-warm-border">
+                        <span className="text-sm font-semibold text-stone-800">نوع الاستخدام</span>
+                      </div>
+                      <div className="p-4 flex gap-3">
+                        {analytics.query_type_dist.map((t, i) => {
+                          const total = analytics.query_type_dist.reduce((s, x) => s + x.count, 0) || 1
+                          const pct = Math.round((t.count / total) * 100)
+                          const label = t.type === 'ask' ? 'نص' : t.type === 'analyze' ? 'وثيقة' : t.type
+                          return (
+                            <div key={i} className="flex-1 text-center bg-warm-bg rounded-xl py-3">
+                              <p className="text-lg font-bold text-navy">{pct}%</p>
+                              <p className="text-xs text-warm-muted mt-0.5">{label}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-user table */}
+                <div className="bg-white border border-warm-border rounded-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-4 border-b border-warm-border">
+                    <Users size={15} className="text-burgundy" />
+                    <span className="text-sm font-semibold text-stone-800">نشاط المستخدمين</span>
+                  </div>
+                  <div className="divide-y divide-warm-border">
+                    {analytics.per_user.slice(0, 20).map((u, i) => (
+                      <div key={i} className="flex items-center gap-3 px-5 py-3">
+                        <span className="text-xs text-warm-muted w-5 text-center shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-mono text-stone-700 truncate">{u.username}</p>
+                          {u.municipality && <p className="text-[10px] text-warm-muted">{u.municipality}</p>}
+                        </div>
+                        <span className="text-xs font-bold text-burgundy shrink-0">{u.count} سؤال</span>
+                        <span className="text-[10px] text-warm-muted shrink-0 hidden sm:block">
+                          {u.last ? new Date(u.last).toLocaleDateString('ar-LB') : '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
