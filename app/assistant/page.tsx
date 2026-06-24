@@ -114,6 +114,11 @@ export default function AssistantPage() {
 
   useEffect(() => { setConversations(loadConversations()) }, [])
 
+  // Wake up Render free-tier server early to eliminate cold-start delay
+  useEffect(() => {
+    fetch('https://baladi-api-n1tg.onrender.com/api/health').catch(() => {})
+  }, [])
+
   // Open sidebar by default on desktop only
   useEffect(() => {
     if (window.innerWidth >= 768) setSidebarOpen(true)
