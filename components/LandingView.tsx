@@ -66,24 +66,30 @@ export default function LandingView({ onAsk }: Props) {
         <div className="flex flex-col items-center mb-8">
 
           {/* Logo card */}
-          <div className="relative mb-5">
-            {/* Radial glow */}
+          <div className="relative mb-6">
+            {/* Outer glow */}
             <div
               className="absolute pointer-events-none"
               style={{
-                inset: '-24px',
+                inset: '-40px',
                 borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(138,15,36,0.12) 0%, transparent 68%)',
-                filter: 'blur(16px)',
+                background: 'radial-gradient(circle, rgba(138,15,36,0.13) 0%, transparent 62%)',
+                filter: 'blur(24px)',
               }}
             />
-            <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[28px] bg-white border border-[#E8ECF0] overflow-hidden p-3"
-              style={{ boxShadow: '0 8px 40px rgba(138,15,36,0.10), 0 2px 12px rgba(0,0,0,0.06)' }}>
+            {/* Logo — large, clean, minimal padding */}
+            <div
+              className="relative w-48 h-48 sm:w-[196px] sm:h-[196px] rounded-[36px] bg-white overflow-hidden"
+              style={{
+                boxShadow:
+                  '0 0 0 1px rgba(0,0,0,0.05), 0 8px 48px rgba(138,15,36,0.14), 0 3px 14px rgba(0,0,0,0.07)',
+              }}
+            >
               <Image
                 src="/logo.png"
                 alt="Baladi AI"
                 fill
-                className="object-contain p-2"
+                className="object-contain p-4"
                 priority
               />
             </div>

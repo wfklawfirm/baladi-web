@@ -119,32 +119,45 @@ export default function LoginPage() {
       <div className="flex flex-col items-center mb-8">
 
         {/* Logo */}
-        <div className="relative mb-5">
+        <div className="relative mb-6">
+          {/* Outer glow ring */}
           <div
-            className="absolute inset-[-16px] rounded-[40px] pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(138,15,36,0.07) 0%, transparent 68%)' }}
+            className="absolute pointer-events-none"
+            style={{
+              inset: '-32px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(138,15,36,0.10) 0%, transparent 65%)',
+              filter: 'blur(20px)',
+            }}
           />
-          <div className="relative w-[92px] h-[92px] rounded-[24px] bg-white border border-[#EAECF0] shadow-[0_4px_28px_rgba(0,0,0,0.09)] p-2.5 overflow-hidden">
+          {/* Logo card — clean, frameless-feel, large */}
+          <div
+            className="relative w-[136px] h-[136px] rounded-[32px] bg-white overflow-hidden"
+            style={{
+              boxShadow:
+                '0 0 0 1px rgba(0,0,0,0.06), 0 6px 32px rgba(138,15,36,0.13), 0 2px 10px rgba(0,0,0,0.07)',
+            }}
+          >
             <Image
               src="/logo.png"
               alt="Baladi AI"
               fill
-              className="object-contain p-1"
+              className="object-contain p-3"
               priority
             />
           </div>
         </div>
 
         {/* Brand pill */}
-        <div className="flex items-center gap-2.5 mb-3">
-          <span className="h-px w-10 bg-[#E8E8E8]" />
-          <span className="text-[10.5px] font-bold tracking-[0.22em] text-[#8A0F24] uppercase">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="h-px w-12 bg-[#E2E8F0]" />
+          <span className="text-[10.5px] font-bold tracking-[0.24em] text-[#8A0F24] uppercase">
             Baladi AI
           </span>
-          <span className="h-px w-10 bg-[#E8E8E8]" />
+          <span className="h-px w-12 bg-[#E2E8F0]" />
         </div>
 
-        <h1 className="text-[20px] font-bold text-[#0D2440] text-center leading-snug mb-1.5">
+        <h1 className="text-[21px] font-bold text-[#0D2440] text-center leading-snug mb-1.5">
           منصة ذكية لدعم العمل البلدي
         </h1>
         <p className="text-[13px] text-stone-500 text-center max-w-[300px] leading-[1.7]">
