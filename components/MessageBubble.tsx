@@ -161,38 +161,29 @@ function PhaseIndicator({ phase }: { phase?: 'searching' | 'generating' }) {
 }
 
 // ── Typewriter hook ───────────────────────────────────────────────────────────
-function useTypewriter(target: string, streaming: boolean): string {
+// Single persistent timer — never jumps to full content immediately.
+// active streaming  → 3 chars/tick @ 20ms  ≈ 150 chars/sec (visible typing)
+// streaming done    → 12 chars/tick @ 20ms (quickly catches up)
+function useTypewriter(fullContent: string, isStreaming: boolean): string {
   const [displayed, setDisplayed] = useState('')
-  const targetRef = useRef(target)
-  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fullRef   = useRef(fullContent)
+  const activeRef = useRef(isStreaming)
+  fullRef.current   = fullContent
+  activeRef.current = isStreaming
 
   useEffect(() => {
-    targetRef.current = target
-    if (!streaming) {
-      // Done streaming — show everything immediately
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-      setDisplayed(target)
-      return
-    }
-    if (target.length === 0) { setDisplayed(''); return }
-    if (!timerRef.current) {
-      timerRef.current = setInterval(() => {
-        setDisplayed(prev => {
-          const t = targetRef.current
-          if (prev.length >= t.length) {
-            clearInterval(timerRef.current!); timerRef.current = null
-            return prev
-          }
-          // Show 4 chars per tick at 16ms ≈ 250 chars/sec — fast but visible
-          return t.slice(0, prev.length + 4)
-        })
-      }, 16)
-    }
-  }, [target, streaming])
+    const id = setInterval(() => {
+      setDisplayed(prev => {
+        const full = fullRef.current
+        if (prev.length >= full.length) return prev
+        const step = activeRef.current ? 3 : 12
+        return full.slice(0, Math.min(prev.length + step, full.length))
+      })
+    }, 20)
+    return () => clearInterval(id)
+  }, []) // single timer for the lifetime of this message
 
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
-
-  return streaming ? displayed : target
+  return displayed
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -255,10 +246,13 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
   }
 
   // ── Assistant — streaming / text answer ──────────────────────────────────
-  const displayed   = useTypewriter(message.content || '', isStreaming)
-  const parts       = parseContent(displayed)
+  // Always typewrite — even after streaming ends the timer catches up smoothly
+  const displayed    = useTypewriter(message.content || '', isStreaming)
+  const isTyping     = displayed.length < (message.content || '').length
+  const showCursor   = isStreaming || isTyping
+  const showPhase    = isStreaming && !message.content
+  const parts        = parseContent(displayed)
   const hasTemplates = parts.some(p => p.type === 'template')
-  const showPhase   = isStreaming && !message.content
 
   return (
     <div className="flex justify-end animate-slide-up">
@@ -269,31 +263,30 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
           ) : (
             <div className="prose-ar">
               {showPhase ? (
-                /* No content yet — show animated phase label */
                 <PhaseIndicator phase={message.streamPhase} />
-              ) : isStreaming ? (
-                <>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayed}</ReactMarkdown>
-                  <span
-                    className="inline-block w-0.5 h-4 bg-burgundy ml-0.5 align-middle"
-                    style={{ animation: 'pulse 0.8s cubic-bezier(0.4,0,0.6,1) infinite' }}
-                  />
-                </>
               ) : (
-                parts.map((part, i) =>
-                  part.type === 'template' ? (
-                    <TemplateCard key={i} title={part.title} content={part.content} />
-                  ) : (
-                    <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>{part.content}</ReactMarkdown>
-                  )
-                )
+                <>
+                  {parts.map((part, i) =>
+                    part.type === 'template' ? (
+                      <TemplateCard key={i} title={part.title} content={part.content} />
+                    ) : (
+                      <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>{part.content}</ReactMarkdown>
+                    )
+                  )}
+                  {showCursor && (
+                    <span
+                      className="inline-block w-0.5 h-4 bg-burgundy ml-0.5 align-middle"
+                      style={{ animation: 'pulse 0.8s cubic-bezier(0.4,0,0.6,1) infinite' }}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
 
-        {/* Meta row */}
-        {!message.error && !isStreaming && (
+        {/* Meta row — show only when typewriter finished */}
+        {!message.error && !isStreaming && !isTyping && (
           <div className="flex items-center justify-between mt-2 px-1">
             <div className="flex items-center gap-3">
               {conf && (
@@ -323,7 +316,7 @@ export default function MessageBubble({ message, onFollowUp }: Props) {
         )}
 
         {/* Follow-up chips */}
-        {!isStreaming && message.follow_up && message.follow_up.length > 0 && onFollowUp && (
+        {!isStreaming && !isTyping && message.follow_up && message.follow_up.length > 0 && onFollowUp && (
           <div className="mt-3 flex flex-col gap-1.5">
             {message.follow_up.map((q, i) => (
               <button
