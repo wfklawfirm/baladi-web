@@ -76,29 +76,105 @@ function TemplateCard({ title, content }: { title: string; content: string }) {
 <meta charset="UTF-8">
 <title>${title} — ${mun}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Noto Naskh Arabic',Arial,sans-serif;direction:rtl;background:#fff;color:#1a1a1a;font-size:13pt;line-height:2.1;padding:36px 52px}
-  .lh{text-align:center;border-bottom:3px double #8b1a2b;padding-bottom:14px;margin-bottom:24px}
-  .lh h1{font-size:17pt;font-weight:700;color:#8b1a2b}
-  .lh h2{font-size:13pt;font-weight:600;color:#333;margin-top:3px}
-  .lh .ref{font-size:10pt;color:#666;margin-top:5px}
-  .badge{display:inline-block;background:#8b1a2b;color:#fff;padding:3px 14px;border-radius:20px;font-size:11pt;font-weight:600;margin-bottom:20px}
-  .body{white-space:pre-wrap;font-size:12.5pt;line-height:2.2}
-  .footer{margin-top:48px;text-align:center;font-size:9pt;color:#aaa;border-top:1px solid #eee;padding-top:10px}
-  @media print{body{padding:18px 32px}button{display:none!important}}
+  body{font-family:'Noto Naskh Arabic',Arial,sans-serif;direction:rtl;background:#fff;color:#111;font-size:12.5pt;line-height:2.0;padding:28px 56px}
+
+  /* ── ترويسة رسمية ── */
+  .header{display:grid;grid-template-columns:80px 1fr 80px;align-items:center;border-bottom:4px double #8b1a2b;padding-bottom:16px;margin-bottom:6px}
+  .logo-box{display:flex;align-items:center;justify-content:center}
+  .cedar{font-size:44px;line-height:1}
+  .header-center{text-align:center}
+  .republic{font-size:11pt;font-weight:600;color:#555;letter-spacing:0.5px}
+  .ministry{font-size:10pt;color:#777;margin-top:2px}
+  .mun-name{font-size:18pt;font-weight:700;color:#8b1a2b;margin-top:6px}
+  .subline{font-size:10pt;color:#666;margin-top:3px}
+  .ref-box{text-align:left;font-size:10pt;color:#555;line-height:1.8}
+
+  /* ── شريط المرجع ── */
+  .refbar{display:flex;justify-content:space-between;font-size:10pt;color:#555;padding:8px 0;border-bottom:1px solid #ddd;margin-bottom:20px}
+
+  /* ── عنوان القرار ── */
+  .doc-title{text-align:center;margin:18px 0 22px}
+  .doc-title .badge{display:inline-block;background:#8b1a2b;color:#fff;padding:5px 28px;border-radius:4px;font-size:13pt;font-weight:700;letter-spacing:0.3px}
+
+  /* ── جسم الوثيقة ── */
+  .body{white-space:pre-wrap;font-size:12.5pt;line-height:2.2;text-align:justify;border:1px solid #e8e8e8;border-radius:4px;padding:20px 24px;background:#fafafa}
+
+  /* ── منطقة التوقيع ── */
+  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:50px;text-align:center}
+  .sig-box{border-top:1px solid #999;padding-top:8px;font-size:10.5pt}
+  .sig-label{font-weight:600;color:#333}
+  .sig-space{height:52px}
+
+  /* ── تذييل ── */
+  .footer{margin-top:36px;text-align:center;font-size:8.5pt;color:#aaa;border-top:1px solid #eee;padding-top:8px;display:flex;justify-content:space-between}
+
+  @media print{
+    body{padding:14px 36px;font-size:11.5pt}
+    .no-print{display:none!important}
+    .body{border:none;padding:0;background:transparent}
+    @page{margin:1.5cm 2cm;size:A4}
+  }
 </style>
 </head>
 <body>
-<div class="lh">
-  <h1>الجمهورية اللبنانية</h1>
-  <h2>${mun}</h2>
-  <div class="ref">${region} &nbsp;|&nbsp; ${phone}</div>
-  <div class="ref">التاريخ: ${today}</div>
+
+<!-- ترويسة -->
+<div class="header">
+  <div class="logo-box"><div class="cedar">🌲</div></div>
+  <div class="header-center">
+    <div class="republic">الجمهورية اللبنانية</div>
+    <div class="ministry">وزارة الداخلية والبلديات</div>
+    <div class="mun-name">${mun}</div>
+    <div class="subline">${region}</div>
+  </div>
+  <div class="ref-box">
+    <div>هاتف: ${phone}</div>
+    <div>التاريخ:</div>
+    <div style="border-bottom:1px solid #aaa;width:120px;margin-top:4px">&nbsp;</div>
+  </div>
 </div>
-<div style="text-align:center"><span class="badge">${title}</span></div>
-<div class="body">${filled.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-<div class="footer">وثيقة صادرة عن نظام Baladi AI — يُرجى مراجعة المستشار القانوني قبل التوقيع الرسمي</div>
+
+<!-- شريط المرجع -->
+<div class="refbar">
+  <span>رقم القرار: _____ / ${new Date().getFullYear()}</span>
+  <span>التاريخ: ${today}</span>
+  <span>المرجع: _____</span>
+</div>
+
+<!-- عنوان القرار -->
+<div class="doc-title">
+  <span class="badge">${title}</span>
+</div>
+
+<!-- جسم الوثيقة -->
+<div class="body">${filled.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+
+<!-- منطقة التوقيع -->
+<div class="sigs">
+  <div class="sig-box">
+    <div class="sig-label">أمين سر البلدية</div>
+    <div class="sig-space"></div>
+    <div style="font-size:10pt;color:#555">الاسم: ___________________</div>
+  </div>
+  <div class="sig-box">
+    <div class="sig-label">رئيس البلدية</div>
+    <div class="sig-space"></div>
+    <div style="font-size:10pt;color:#555">${mayor}</div>
+  </div>
+</div>
+
+<!-- الختم -->
+<div style="text-align:center;margin-top:32px;color:#ccc;font-size:10pt">[ختم البلدية الرسمي]</div>
+
+<!-- تذييل -->
+<div class="footer">
+  <span>وثيقة مُنشأة بواسطة نظام Baladi AI</span>
+  <span>يُرجى مراجعة المستشار القانوني قبل التوقيع الرسمي</span>
+  <span>${today}</span>
+</div>
+
 <script>window.onload=()=>window.print()</script>
 </body></html>`
 
