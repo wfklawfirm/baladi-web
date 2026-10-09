@@ -1,44 +1,153 @@
-﻿"use client";
-import { useState } from "react";
-import { clearSession, UserSession } from "@/lib/auth";
-type View = "home"|"chat"|"procedures"|"documents"|"meetings"|"procurement";
-interface SidebarProps { session: UserSession; activeView: View; onNavigate: (v:View)=>void; onLogout: ()=>void; }
-const NAV = [
-  {view:"home" as View, label:"الرئيسية"},
-  {view:"chat" as View, label:"استشارة قانونية"},
-  {view:"procedures" as View, label:"إنجاز معاملة"},
-  {view:"documents" as View, label:"إعداد مستند"},
-  {view:"meetings" as View, label:"جلسات المجلس"},
-  {view:"procurement" as View, label:"المشتريات العامة"},
-];
-export function Sidebar({session,activeView,onNavigate,onLogout}:SidebarProps){
-  const [collapsed,setCollapsed]=useState(false);
-  return(
-    <aside style={{width:collapsed?60:240,minHeight:"100vh",background:"var(--navy)",display:"flex",flexDirection:"column",transition:"width 0.25s ease",flexShrink:0,position:"relative",zIndex:10}}>
-      <div style={{padding:collapsed?"20px 0":"20px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"space-between",gap:8}}>
-        {!collapsed&&<div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,background:"var(--primary)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#fff"}}>ب</div><span style={{color:"#fff",fontWeight:700,fontSize:15}}>بلدي AI</span></div>}
-        {collapsed&&<div style={{width:32,height:32,background:"var(--primary)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#fff"}}>ب</div>}
-        <button onClick={()=>setCollapsed(!collapsed)} style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:6,padding:"4px 6px",cursor:"pointer",color:"rgba(255,255,255,0.6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{collapsed?<polyline points="9 18 15 12 9 6"/>:<polyline points="15 18 9 12 15 6"/>}</svg>
-        </button>
-      </div>
-      {!collapsed&&<div style={{margin:"12px 12px 4px",padding:"8px 10px",background:"rgba(255,255,255,0.05)",borderRadius:8,fontSize:12,color:"rgba(255,255,255,0.5)"}}><div style={{fontWeight:600,color:"rgba(255,255,255,0.8)",fontSize:13,marginBottom:2}}>{session.municipality}</div><div>{session.username}</div></div>}
-      <nav style={{flex:1,padding:"8px",display:"flex",flexDirection:"column",gap:2}}>
-        {NAV.map(item=>{const active=activeView===item.view;return(
-          <button key={item.view} onClick={()=>onNavigate(item.view)} style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"9px 0":"9px 10px",justifyContent:collapsed?"center":"flex-start",borderRadius:8,border:"none",cursor:"pointer",background:active?"var(--primary)":"transparent",color:active?"#fff":"rgba(255,255,255,0.55)",fontFamily:"var(--font-arabic),sans-serif",fontSize:13.5,fontWeight:active?600:400,width:"100%",textAlign:"right"}}
-            onMouseEnter={e=>{if(!active)(e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.07)";}}
-            onMouseLeave={e=>{if(!active)(e.currentTarget as HTMLButtonElement).style.background="transparent";}}>
-            {!collapsed&&<span>{item.label}</span>}
-            {collapsed&&<span style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{item.label.slice(0,2)}</span>}
+'use client'
+
+import { Plus, Search, MessageSquare, ChevronLeft, Trash2 } from 'lucide-react'
+import Image from 'next/image'
+import type { Conversation } from '@/lib/types'
+import clsx from 'clsx'
+
+interface Props {
+  open: boolean
+  conversations: Conversation[]
+  activeId: string | null
+  onNewChat: () => void
+  onSelectChat: (id: string) => void
+  onDeleteChat: (id: string) => void
+  onToggle: () => void
+}
+
+function timeLabel(date: Date): string {
+  const now = new Date()
+  const diff = (now.getTime() - date.getTime()) / 1000
+  if (diff < 60)        return 'الآن'
+  if (diff < 3600)      return `${Math.floor(diff / 60)} دقيقة`
+  if (diff < 86400)     return 'اليوم'
+  if (diff < 172800)    return 'أمس'
+  return date.toLocaleDateString('ar-LB', { month: 'short', day: 'numeric' })
+}
+
+export default function Sidebar({
+  open, conversations, activeId, onNewChat, onSelectChat, onDeleteChat, onToggle
+}: Props) {
+  return (
+    <>
+      {/* Mobile backdrop — closes sidebar on tap outside */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={onToggle}
+        />
+      )}
+
+      <aside
+        className={clsx(
+          'flex flex-col bg-warm-bg transition-all duration-300',
+          // Mobile: fixed overlay drawer from the right
+          'fixed inset-y-0 right-0 z-50',
+          // Desktop: back to normal flex-item in the row
+          'md:static md:h-full md:shrink-0 md:z-auto',
+          open ? [
+            // Open widths
+            'w-[85vw] md:w-64',
+            // Borders
+            'border-l border-warm-border md:border-l-0 md:border-r md:border-warm-border',
+            // Shadow on mobile only
+            'shadow-2xl md:shadow-none',
+          ] : [
+            'w-0 overflow-hidden border-0',
+          ],
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-warm-border">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="Baladi AI"
+              width={32}
+              height={32}
+              className="object-contain rounded-md"
+            />
+            <span className="font-semibold text-navy text-sm">Baladi AI</span>
+          </div>
+          <button
+            onClick={onToggle}
+            className="p-1 rounded hover:bg-warm-bg text-warm-muted transition-colors"
+          >
+            <ChevronLeft size={16} />
           </button>
-        );})}
-      </nav>
-      <div style={{padding:"12px 8px",borderTop:"1px solid rgba(255,255,255,0.08)"}}>
-        <button onClick={()=>{clearSession();onLogout();}} style={{display:"flex",alignItems:"center",gap:10,padding:collapsed?"9px 0":"9px 10px",justifyContent:collapsed?"center":"flex-start",borderRadius:8,border:"none",cursor:"pointer",background:"transparent",color:"rgba(255,255,255,0.4)",fontFamily:"var(--font-arabic),sans-serif",fontSize:13,width:"100%"}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          {!collapsed&&<span>خروج</span>}
-        </button>
-      </div>
-    </aside>
-  );
+        </div>
+
+        {/* New chat */}
+        <div className="p-3">
+          <button
+            onClick={onNewChat}
+            className="w-full flex items-center justify-center gap-2 bg-burgundy hover:bg-burgundy-dark text-white text-sm font-medium py-2.5 rounded-lg transition-colors shadow-sm"
+          >
+            <Plus size={15} />
+            محادثة جديدة
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-3 pb-3">
+          <div className="flex items-center gap-2 bg-warm-bg border border-warm-border rounded-lg px-3 py-2">
+            <Search size={13} className="text-warm-muted shrink-0" />
+            <input
+              type="text"
+              placeholder="بحث…"
+              className="bg-transparent text-xs text-stone-700 placeholder-warm-muted outline-none w-full text-right"
+            />
+          </div>
+        </div>
+
+        {/* History */}
+        <div className="flex-1 overflow-y-auto px-2 pb-4">
+          {conversations.length === 0 ? (
+            <p className="text-xs text-warm-muted text-center py-8">لا توجد محادثات سابقة</p>
+          ) : (
+            <>
+              <p className="text-[10px] font-semibold text-warm-muted uppercase tracking-wider px-2 mb-2">
+                السابقة
+              </p>
+              <ul className="space-y-0.5">
+                {conversations.map(c => (
+                  <li key={c.id} className="group relative">
+                    <button
+                      onClick={() => onSelectChat(c.id)}
+                      className={clsx(
+                        'w-full text-right flex items-start gap-2 px-2 py-2 rounded-lg text-xs transition-colors',
+                        c.id === activeId
+                          ? 'bg-burgundy/8 text-navy font-medium'
+                          : 'text-stone-600 hover:bg-warm-bg'
+                      )}
+                    >
+                      <MessageSquare size={13} className="mt-0.5 shrink-0 text-warm-muted" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate leading-5">{c.title}</p>
+                        <p className="text-warm-muted text-[10px]">{timeLabel(c.createdAt)}</p>
+                      </div>
+                    </button>
+                    {/* Delete on hover */}
+                    <button
+                      onClick={e => { e.stopPropagation(); onDeleteChat(c.id) }}
+                      className="absolute left-2 top-2 opacity-0 group-hover:opacity-100 p-0.5 rounded text-warm-muted hover:text-red-500 transition-all"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-warm-border p-3">
+          <p className="text-[10px] text-warm-muted text-center leading-4">
+            مساعد بلدي متخصص بالقانون اللبناني
+          </p>
+        </div>
+      </aside>
+    </>
+  )
 }
