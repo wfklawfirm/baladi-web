@@ -1,234 +1,39 @@
-import type { Domain, Source, DocumentAnalysis } from './types'
+﻿const BASE = process.env.NEXT_PUBLIC_API_URL || "https://web-production-f481a.up.railway.app";
+function authHeaders(token: string) { return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }; }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-function authHeader(): Record<string, string> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('baladi_token') : null
-  return token ? { Authorization: `Bearer ${token}` } : {}
+export async function login(username: string, password: string) {
+  const res = await fetch(`${BASE}/api/login`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username,password}) });
+  if (!res.ok) throw new Error((await res.json()).detail||"فشل تسجيل الدخول");
+  return res.json() as Promise<{access_token:string;username:string;municipality:string}>;
 }
-
-export interface AuthPayload { username: string; password: string; municipality?: string; phone?: string; email?: string }
-export interface AuthResult  { token: string; username: string; municipality: string; expires_at: string; days_remaining: number }
-
-export async function apiRegister(p: AuthPayload): Promise<AuthResult> {
-  const res = await fetch(`${API_URL}/api/auth/register`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(p),
-  })
-  const data = await res.json().catch(() => ({ detail: res.statusText }))
-  if (!res.ok) throw new Error(data.detail ?? 'Registration error')
-  return data
+export async function register(username: string, password: string, municipality: string) {
+  const res = await fetch(`${BASE}/api/register`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({username,password,municipality}) });
+  if (!res.ok) throw new Error((await res.json()).detail||"فشل إنشاء الحساب");
+  return res.json();
 }
-
-export async function apiLogin(p: { username: string; password: string }): Promise<AuthResult> {
-  const res = await fetch(`${API_URL}/api/auth/login`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(p),
-  })
-  const data = await res.json().catch(() => ({ detail: res.statusText }))
-  if (!res.ok) throw new Error(data.detail ?? 'Login error')
-  return data
+export function streamAsk(token: string, question: string, onChunk: (c:string)=>void): ()=>void {
+  const ctrl = new AbortController();
+  (async()=>{ try {
+    const res = await fetch(`${BASE}/api/ask`,{method:"POST",headers:authHeaders(token),body:JSON.stringify({question}),signal:ctrl.signal});
+    const reader=res.body!.getReader(); const dec=new TextDecoder();
+    while(true){const{done,value}=await reader.read();if(done)break;const text=dec.decode(value);for(const line of text.split("\n")){if(line.startsWith("data: ")){const d=line.slice(6);if(d==="[DONE]")break;try{onChunk(JSON.parse(d).content??"");}catch{}}}}
+  }catch(e:unknown){if(e instanceof Error&&e.name!=="AbortError")throw e;}})();
+  return ()=>ctrl.abort();
 }
+export async function listProcedures(token:string){const res=await fetch(`${BASE}/api/procedures`,{headers:authHeaders(token)});if(!res.ok)throw new Error("تعذّر تحميل الإجراءات");return res.json();}
+export async function startWorkflow(token:string,procedure_id:string,municipality:string){const res=await fetch(`${BASE}/api/workflows/start`,{method:"POST",headers:authHeaders(token),body:JSON.stringify({procedure_id,municipality})});if(!res.ok)throw new Error("تعذّر بدء سير العمل");return res.json();}
+export async function advanceWorkflow(token:string,workflow_id:string,action:string){const res=await fetch(`${BASE}/api/workflows/${workflow_id}/advance`,{method:"POST",headers:authHeaders(token),body:JSON.stringify({action})});if(!res.ok)throw new Error("تعذّر تقديم الخطوة");return res.json();}
+export async function listTemplates(token:string){const res=await fetch(`${BASE}/api/document-templates`,{headers:authHeaders(token)});if(!res.ok)throw new Error("تعذّر تحميل القوالب");return res.json();}
+export async function generateDocumentAI(token:string,template_id:string,context:string,municipality:string){const res=await fetch(`${BASE}/api/documents/generate-ai`,{method:"POST",headers:authHeaders(token),body:JSON.stringify({template_id,context,municipality})});if(!res.ok)throw new Error("تعذّر توليد المستند");return res.json();}
+export async function createMeeting(token:string,data:any){const res=await fetch(`${BASE}/api/meetings`,{method:"POST",headers:authHeaders(token),body:JSON.stringify(data)});if(!res.ok)throw new Error("تعذّر إنشاء الاجتماع");return res.json();}
+export async function listMeetings(token:string){const res=await fetch(`${BASE}/api/meetings`,{headers:authHeaders(token)});if(!res.ok)throw new Error("تعذّر تحميل الاجتماعات");return res.json();}
+export async function generateMinutes(token:string,meeting_id:string,notes:string){const res=await fetch(`${BASE}/api/meetings/${meeting_id}/generate-minutes`,{method:"POST",headers:authHeaders(token),body:JSON.stringify({notes})});if(!res.ok)throw new Error("تعذّر توليد المحضر");return res.json();}
+export async function classifyProcurement(token:string,description:string,estimated_value:number,contract_type:string){const res=await fetch(`${BASE}/api/procurement/classify`,{method:"POST",headers:authHeaders(token),body:JSON.stringify({description,estimated_value,contract_type})});if(!res.ok)throw new Error("تعذّر تصنيف المشتريات");return res.json();}
 
-export interface HistoryMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-export interface AskPayload {
-  query: string
-  top_k?: number
-  domain?: Domain
-  history?: HistoryMessage[]
-}
-
-export interface AskResult {
-  answer: string
-  sources: Source[]
-  confidence: 'high' | 'medium' | 'low'
-  duration_ms: number
-  chunks_used: number
-  query: string
-}
-
-export interface StreamChunk {
-  delta?: string
-  done?: boolean
-  error?: string
-  sources?: Source[]
-  confidence?: 'high' | 'medium' | 'low'
-  chunks_used?: number
-  query?: string
-  actions?: { label: string; prompt: string; type: string }[]
-  phase?: 'searching' | 'generating'
-}
-
-/**
- * Streaming Q&A — yields delta strings, then a final {done: true, sources, confidence, ...} chunk.
- */
-export async function* askStream(payload: AskPayload): AsyncGenerator<StreamChunk> {
-  const res = await fetch(`${API_URL}/api/ask/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({
-      query:   payload.query,
-      top_k:   payload.top_k ?? 10,
-      domain:  payload.domain === 'auto' ? null : payload.domain ?? null,
-      history: payload.history ?? [],
-    }),
-  })
-
-  if (!res.ok || !res.body) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? 'Stream error')
-  }
-
-  const reader  = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer    = ''
-
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const raw = line.slice(6).trim()
-      if (!raw) continue
-      try { yield JSON.parse(raw) as StreamChunk } catch { /* ignore */ }
-    }
-  }
-}
-
-export async function ask(payload: AskPayload): Promise<AskResult> {
-  const res = await fetch(`${API_URL}/api/ask`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({
-      query:   payload.query,
-      top_k:   payload.top_k ?? 10,
-      domain:  payload.domain === 'auto' ? null : payload.domain ?? null,
-      history: payload.history ?? [],
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? 'API error')
-  }
-  return res.json()
-}
-
-export async function analyzeDocument(
-  file: File,
-  query?: string,
-): Promise<DocumentAnalysis> {
-  const form = new FormData()
-  form.append('file', file)
-  if (query) form.append('query', query)
-
-  const res = await fetch(`${API_URL}/api/analyze`, {
-    method: 'POST',
-    headers: { ...authHeader() },
-    body: form,
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? 'Analysis error')
-  }
-  return res.json()
-}
-
-/**
- * Stream document/image analysis as markdown text — same SSE protocol as askStream.
- * Returns first token in ~1s instead of waiting 5-8s for full JSON.
- */
-export async function* analyzeDocumentStream(file: File, query?: string): AsyncGenerator<StreamChunk> {
-  const form = new FormData()
-  form.append('file', file)
-  if (query) form.append('query', query)
-
-  const res = await fetch(`${API_URL}/api/analyze/stream`, {
-    method: 'POST',
-    headers: { ...authHeader() },
-    body: form,
-  })
-
-  if (!res.ok || !res.body) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? 'Analysis stream error')
-  }
-
-  const reader  = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer    = ''
-
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const raw = line.slice(6).trim()
-      if (!raw) continue
-      try { yield JSON.parse(raw) as StreamChunk } catch { /* ignore */ }
-    }
-  }
-}
-
-export async function transcribeAudio(blob: Blob): Promise<string> {
-  const form = new FormData()
-  form.append('audio', blob, 'recording.webm')
-
-  const res = await fetch(`${API_URL}/api/transcribe`, {
-    method: 'POST',
-    headers: { ...authHeader() },
-    body: form,
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? 'Transcription error')
-  }
-  const data = await res.json()
-  return data.text
-}
-
-export interface ClarifyOption { label: string; prompt: string }
-
-export async function apiClarifyDoc(
-  file: File,
-  query?: string,
-): Promise<{ doc_summary: string; options: ClarifyOption[] }> {
-  const form = new FormData()
-  form.append('file', file)
-  if (query) form.append('query', query)
-  const res = await fetch(`${API_URL}/api/clarify-doc`, {
-    method: 'POST',
-    headers: { ...authHeader() },
-    body: form,
-  })
-  if (!res.ok) return { doc_summary: '', options: [] }
-  const data = await res.json().catch(() => ({ doc_summary: '', options: [] }))
-  return { doc_summary: data.doc_summary ?? '', options: data.options ?? [] }
-}
-
-export async function apiClarify(query: string): Promise<ClarifyOption[]> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('baladi_token') : null
-  const res = await fetch(`${API_URL}/api/clarify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify({ query }),
-  })
-  if (!res.ok) return []
-  const data = await res.json().catch(() => ({ options: [] }))
-  return data.options ?? []
-}
-
-export async function checkHealth(): Promise<{ status: string; points: number }> {
-  const res = await fetch(`${API_URL}/api/health`, { cache: 'no-store' })
-  if (!res.ok) throw new Error('API unavailable')
-  return res.json()
-}
+export interface ProcedureSummary{id:string;name:string;category:string;description:string;estimated_days:number;step_count:number;}
+export interface ProcedureStep{step:number;title:string;description:string;responsible_party:string;duration_days:number;documents_needed:string[];}
+export interface WorkflowState{workflow_id:string;procedure_id:string;procedure_name:string;municipality:string;current_step:number;total_steps:number;status:string;current_step_info:ProcedureStep;completed_steps:number[];progress_percent:number;started_at:string;updated_at:string;}
+export interface TemplateSummary{id:string;name:string;category:string;description:string;field_count:number;}
+export interface GeneratedDocument{document_id:string;template_id:string;template_name:string;fields:Record<string,string>;content:string;municipality:string;generated_at:string;}
+export interface Meeting{meeting_id:string;title:string;municipality:string;meeting_date:string;agenda_items:string[];attendees:string[];status:string;created_at:string;minutes?:string;}
+export interface ProcurementResult{contract_type:string;estimated_value:number;procedure:string;approving_authority:string;committee_required:boolean;legal_basis:string;required_steps:string[];timeline_days:number;notes:string;warning?:string;}
