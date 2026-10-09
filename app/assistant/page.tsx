@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Menu, Settings, FileDown, LogOut, Clock } from 'lucide-react'
+import Link from 'next/link'
+import { Menu, Settings, FileDown, LogOut, Clock, LayoutGrid } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
 import LandingView from '@/components/LandingView'
 import MessageBubble, { LoadingBubble } from '@/components/MessageBubble'
@@ -411,6 +412,13 @@ export default function AssistantPage() {
               <Menu size={18} />
             </button>
           )}
+          <Link
+            href="/workspace"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-warm-muted hover:text-stone-700 hover:bg-warm-border transition-colors"
+          >
+            <LayoutGrid size={14} />
+            الرئيسية
+          </Link>
           <div className="flex-1" />
 
           {/* Days remaining */}
