@@ -75,7 +75,7 @@ export default function LoginPage() {
     e.preventDefault(); setError(''); setLoading(true)
     try {
       const res = await apiLogin({ username: lUser.trim(), password: lPwd })
-      setAuth(res.token, res); router.replace('/assistant')
+      setAuth(res.token, res); router.replace('/workspace')
     } catch (err) { setError(err instanceof Error ? err.message : 'حدث خطأ') }
     finally { setLoading(false) }
   }
@@ -90,7 +90,7 @@ export default function LoginPage() {
         phone:        rPhone.trim(),
         email:        rEmail.trim(),
       })
-      setAuth(res.token, res); router.replace('/assistant')
+      setAuth(res.token, res); router.replace('/workspace')
     } catch (err) { setError(err instanceof Error ? err.message : 'حدث خطأ') }
     finally { setLoading(false) }
   }
